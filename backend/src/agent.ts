@@ -1,8 +1,14 @@
 import { judgementFor, oracleFor, taskFor } from "./templates";
 import type { AgentMeta, BehaviorDiagnosis, ConfessionPlan, Env, RedemptionTaskTemplate, Reward, SettlementCopy } from "./types";
 
-const DEFAULT_STEPFUN_MODEL = "step-3.5-flash";
-const DEFAULT_STEPFUN_BASE_URL = "https://api.stepfun.com/v1";
+const DEFAULT_STEPFUN_MODEL = "step-3.7-flash";
+const DEFAULT_STEPFUN_BASE_URL = "https://api.stepfun.com/step_plan/v1";
+const DEFAULT_REASONING_EFFORT = "low";
+
+export type ChatMessage = {
+  role: "system" | "user" | "assistant";
+  content: string;
+};
 
 export async function createConfessionPlan(params: {
   env: Env;
@@ -39,6 +45,7 @@ export async function createConfessionPlan(params: {
           "审判行为，不羞辱人格；吐槽选择，不攻击身份。",
           "任务必须 5 到 20 分钟，可执行、明确、可自我确认。",
           "奖励字段必须包含 wisdom、discipline、courage、compassion、exp，数值为整数。",
+          "最终答案必须放在 assistant.content 中，不能只放在 reasoning 中。",
         ].join("\n"),
       },
       {
@@ -108,6 +115,7 @@ export async function createSettlementCopy(params: {
           "god_reply 不超过 120 个中文字符。",
           "如果没有升级，oracle_text 必须为 null。",
           "如果升级，oracle_text 为 1 到 3 句扎心但不鸡汤的神谕。",
+          "最终答案必须放在 assistant.content 中，不能只放在 reasoning 中。",
         ].join("\n"),
       },
       {
@@ -149,10 +157,87 @@ function withFallbackMeta(plan: ConfessionPlan, env: Env, error: unknown): Confe
   };
 }
 
-async function chatJson<T>(env: Env, messages: Array<{ role: "system" | "user"; content: string }>): Promise<T> {
+export async function chatWithStepFun(env: Env, messages: ChatMessage[]): Promise<{ content: string; meta: AgentMeta }> {
+  if (!env.STEPFUN_API_KEY) {
+    throw new Error("STEPFUN_API_KEY is not configured");
+  }
+
+  const payload = await requestStepFun(env, messages, false);
+  const content = extractStepFunContent(payload);
+  if (!content) {
+    throw new Error(`StepFun response missing content: ${truncate(JSON.stringify(payload), 240)}`);
+  }
+
+  return {
+    content,
+    meta: stepfunMeta(env, false),
+  };
+}
+
+export async function streamStepFunChat(env: Env, messages: ChatMessage[]): Promise<Response> {
+  if (!env.STEPFUN_API_KEY) {
+    throw new Error("STEPFUN_API_KEY is not configured");
+  }
+
+  const response = await fetchStepFunOnce(env, messages, true);
+
+  if (!response.ok || !response.body) {
+    const errorText = await response.text();
+    throw new Error(`StepFun stream request failed: ${response.status} ${truncate(errorText, 160)}`);
+  }
+
+  return new Response(response.body, {
+    status: response.status,
+    headers: {
+      "content-type": "text/event-stream; charset=utf-8",
+      "cache-control": "no-cache",
+      "access-control-allow-origin": "*",
+      "access-control-allow-methods": "GET,POST,OPTIONS",
+      "access-control-allow-headers": "content-type,x-user-id",
+    },
+  });
+}
+
+async function chatJson<T>(env: Env, messages: ChatMessage[]): Promise<T> {
+  const payload = await requestStepFun(env, messages, false);
+  const content = extractStepFunContent(payload);
+  if (!content) {
+    throw new Error(`StepFun response missing content: ${truncate(JSON.stringify(payload), 240)}`);
+  }
+
+  const jsonText = extractJsonText(content);
+  if (!jsonText) {
+    throw new Error(`StepFun response does not contain JSON: ${truncate(content, 160)}`);
+  }
+
+  try {
+    return JSON.parse(jsonText) as T;
+  } catch {
+    throw new Error(`StepFun response is not valid JSON: ${truncate(content, 160)}`);
+  }
+}
+
+async function requestStepFun(env: Env, messages: ChatMessage[], stream: boolean): Promise<{
+  choices?: Array<{ message?: { content?: unknown; reasoning_content?: unknown; reasoning?: unknown } }>;
+  output_text?: unknown;
+}> {
+  const response = await fetchStepFunOnce(env, messages, stream);
+
+  if (!response.ok) {
+    const errorText = await response.text();
+    throw new Error(`StepFun request failed: ${response.status} ${truncate(errorText, 160)}`);
+  }
+
+  return response.json<{
+    choices?: Array<{ message?: { content?: unknown; reasoning_content?: unknown; reasoning?: unknown } }>;
+    output_text?: unknown;
+  }>();
+}
+
+function fetchStepFunOnce(env: Env, messages: ChatMessage[], stream: boolean): Promise<Response> {
   const baseUrl = env.STEPFUN_BASE_URL ?? DEFAULT_STEPFUN_BASE_URL;
   const model = env.STEPFUN_MODEL ?? DEFAULT_STEPFUN_MODEL;
-  const response = await fetch(`${baseUrl}/chat/completions`, {
+  return fetch(`${baseUrl}/chat/completions`, {
     method: "POST",
     headers: {
       "content-type": "application/json",
@@ -164,31 +249,18 @@ async function chatJson<T>(env: Env, messages: Array<{ role: "system" | "user"; 
       temperature: 0.7,
       top_p: 0.9,
       max_tokens: 800,
-      response_format: { type: "json_object" },
-      stream: false,
+      stream,
+      reasoning_effort: env.STEPFUN_REASONING_EFFORT ?? DEFAULT_REASONING_EFFORT,
     }),
   });
+}
 
-  if (!response.ok) {
-    const errorText = await response.text();
-    throw new Error(`StepFun request failed: ${response.status} ${truncate(errorText, 160)}`);
-  }
-
-  const payload = await response.json<{
-    choices?: Array<{ message?: { content?: unknown; reasoning_content?: unknown; reasoning?: unknown } }>;
-    output_text?: unknown;
-  }>();
+function extractStepFunContent(payload: {
+  choices?: Array<{ message?: { content?: unknown; reasoning_content?: unknown; reasoning?: unknown } }>;
+  output_text?: unknown;
+}): string | null {
   const message = payload.choices?.[0]?.message;
-  const content = normalizeModelText(message?.content ?? message?.reasoning_content ?? message?.reasoning ?? payload.output_text);
-  if (!content) {
-    throw new Error(`StepFun response missing content: ${truncate(JSON.stringify(payload), 240)}`);
-  }
-
-  try {
-    return JSON.parse(stripJsonFence(content)) as T;
-  } catch {
-    throw new Error(`StepFun response is not valid JSON: ${truncate(content, 160)}`);
-  }
+  return firstNonEmptyText(message?.content, payload.output_text);
 }
 
 function normalizeTask(value: unknown, fallback: RedemptionTaskTemplate): RedemptionTaskTemplate {
@@ -242,18 +314,29 @@ function truncate(value: string, maxLength: number): string {
   return value.length > maxLength ? `${value.slice(0, maxLength)}...` : value;
 }
 
-function normalizeModelText(value: unknown): string | null {
-  if (typeof value === "string") {
-    return value.trim() || null;
+function firstNonEmptyText(...values: unknown[]): string | null {
+  for (const value of values) {
+    const normalized = normalizeModelText(value);
+    if (normalized) return normalized;
   }
+  return null;
+}
+
+function normalizeModelText(value: unknown): string | null {
   if (value == null) {
     return null;
+  }
+  if (typeof value === "string") {
+    return value.trim() || null;
   }
   return JSON.stringify(value);
 }
 
-function stripJsonFence(value: string): string {
+function extractJsonText(value: string): string | null {
   const trimmed = value.trim();
   const fenced = trimmed.match(/^```(?:json)?\s*([\s\S]*?)\s*```$/i);
-  return fenced?.[1]?.trim() ?? trimmed;
+  if (fenced?.[1]) return fenced[1].trim();
+  if (trimmed.startsWith("{") && trimmed.endsWith("}")) return trimmed;
+  const objectMatch = trimmed.match(/\{[\s\S]*\}/);
+  return objectMatch?.[0] ?? null;
 }

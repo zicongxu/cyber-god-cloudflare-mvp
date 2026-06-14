@@ -14,7 +14,9 @@ npm run dev
 
 ```text
 STEPFUN_API_KEY=sk-your-stepfun-api-key
-STEPFUN_MODEL=step-3.5-flash
+STEPFUN_MODEL=step-3.7-flash
+STEPFUN_BASE_URL=https://api.stepfun.com/step_plan/v1
+STEPFUN_REASONING_EFFORT=low
 ```
 
 如果未配置 `STEPFUN_API_KEY`，后端会自动使用模板兜底。

@@ -3,6 +3,7 @@ export interface Env {
   STEPFUN_API_KEY?: string;
   STEPFUN_MODEL?: string;
   STEPFUN_BASE_URL?: string;
+  STEPFUN_REASONING_EFFORT?: string;
 }
 
 export type FlowStatus =

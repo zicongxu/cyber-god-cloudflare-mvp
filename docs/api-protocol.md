@@ -83,6 +83,8 @@ completion_ritual_started
 |---|---|
 | 用户提交忏悔 | `POST /api/v1/confession-flows` |
 | 健康检查 | `GET /api/v1/health` |
+| StepFun 普通对话 | `POST /api/v1/agent/chat` |
+| StepFun 流式对话 | `POST /api/v1/agent/chat-stream` |
 | 页面刷新恢复 | `GET /api/v1/confession-flows/{flow_id}` |
 | 点击请求神明见证 | `POST /api/v1/tasks/{task_id}/completion-ritual` |
 | 选择未完成 | `POST /api/v1/tasks/{task_id}/downgrade` |
@@ -112,7 +114,71 @@ GET /api/v1/health
 
 `agent_provider` 为 `stepfun` 表示后端已配置 StepFun API Key；为 `template` 表示当前使用模板兜底。
 
-## 5. 创建忏悔审判流
+## 5. StepFun 普通对话
+
+```http
+POST /api/v1/agent/chat
+```
+
+请求：
+
+```json
+{
+  "messages": [
+    {
+      "role": "system",
+      "content": "你是赛博上帝，幽默、毒舌，但只审判行为，不羞辱人格。"
+    },
+    {
+      "role": "user",
+      "content": "神啊，我今天又拖延了。"
+    }
+  ]
+}
+```
+
+响应：
+
+```json
+{
+  "code": 0,
+  "message": "ok",
+  "data": {
+    "message": {
+      "role": "assistant",
+      "content": "..."
+    },
+    "agent": {
+      "provider": "stepfun",
+      "model": "step-3.7-flash",
+      "fallback": false
+    }
+  }
+}
+```
+
+## 6. StepFun 流式对话
+
+```http
+POST /api/v1/agent/chat-stream
+```
+
+请求体同普通对话。
+
+响应：
+
+```http
+Content-Type: text/event-stream; charset=utf-8
+```
+
+后端会透传 StepFun 的 SSE 流。前端按 OpenAI Chat Completions 流式格式解析：
+
+```text
+data: {"choices":[{"delta":{"content":"..."}}]}
+data: [DONE]
+```
+
+## 7. 创建忏悔审判流
 
 ```http
 POST /api/v1/confession-flows
@@ -189,7 +255,7 @@ POST /api/v1/confession-flows
 - `agent.fallback=true` 表示本次 StepFun 调用失败后使用了模板兜底；
 - 前端可以忽略 `agent` 字段，不影响主流程。
 
-## 6. 查询流程详情
+## 8. 查询流程详情
 
 ```http
 GET /api/v1/confession-flows/{flow_id}
@@ -235,7 +301,7 @@ GET /api/v1/confession-flows/{flow_id}
 }
 ```
 
-## 7. 开启完成仪式
+## 9. 开启完成仪式
 
 ```http
 POST /api/v1/tasks/{task_id}/completion-ritual
@@ -277,7 +343,7 @@ POST /api/v1/tasks/{task_id}/completion-ritual
 }
 ```
 
-## 8. 未完成，生成 Tiny 任务
+## 10. 未完成，生成 Tiny 任务
 
 ```http
 POST /api/v1/tasks/{task_id}/downgrade
@@ -325,7 +391,7 @@ POST /api/v1/tasks/{task_id}/downgrade
 }
 ```
 
-## 9. 自我确认完成
+## 11. 自我确认完成
 
 ```http
 POST /api/v1/tasks/{task_id}/self-confirm
@@ -366,7 +432,7 @@ POST /api/v1/tasks/{task_id}/self-confirm
 - `self_confirmation_text` 必填；
 - 见证材料只保存，不审核真假。
 
-## 10. 结算奖励
+## 12. 结算奖励
 
 ```http
 POST /api/v1/tasks/{task_id}/settle
@@ -416,7 +482,7 @@ POST /api/v1/tasks/{task_id}/settle
     "god_reply": "救赎已被见证。今天你没有继续向算法进贡，也没有把承诺扔进明天的垃圾桶。",
     "agent": {
       "provider": "stepfun",
-      "model": "step-3.5-flash",
+      "model": "step-3.7-flash",
       "fallback": false
     }
   }
@@ -439,7 +505,7 @@ POST /api/v1/tasks/{task_id}/settle
 }
 ```
 
-## 11. 查询用户灵魂档案
+## 13. 查询用户灵魂档案
 
 ```http
 GET /api/v1/users/me/profile
@@ -471,7 +537,7 @@ GET /api/v1/users/me/profile
 }
 ```
 
-## 12. 错误码
+## 14. 错误码
 
 | code | message | 说明 |
 |---:|---|---|

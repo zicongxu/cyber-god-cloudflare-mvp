@@ -56,6 +56,14 @@ npm run db:migrate:remote
 npm run deploy
 ```
 
+当前 StepFun 接入使用 Step Plan reasoning API：
+
+```text
+STEPFUN_BASE_URL=https://api.stepfun.com/step_plan/v1
+STEPFUN_MODEL=step-3.7-flash
+STEPFUN_REASONING_EFFORT=low
+```
+
 ## 验证请求
 
 ```bash

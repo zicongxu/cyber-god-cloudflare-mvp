@@ -1,4 +1,4 @@
-import { createConfessionPlan, createSettlementCopy } from "./agent";
+import { chatWithStepFun, createConfessionPlan, createSettlementCopy, streamStepFunChat, type ChatMessage } from "./agent";
 import { newId, nowIso } from "./id";
 import { fail, ok } from "./response";
 import { assertTransition } from "./state-machine";
@@ -62,8 +62,16 @@ export default {
         return ok({
           status: "ok",
           agent_provider: env.STEPFUN_API_KEY ? "stepfun" : "template",
-          stepfun_model: env.STEPFUN_MODEL ?? "step-3.5-flash",
+          stepfun_model: env.STEPFUN_MODEL ?? "step-3.7-flash",
         });
+      }
+
+      if (request.method === "POST" && path === "/api/v1/agent/chat") {
+        return await chatAgent(request, env);
+      }
+
+      if (request.method === "POST" && path === "/api/v1/agent/chat-stream") {
+        return await streamAgent(request, env);
       }
 
       if (request.method === "POST" && path === "/api/v1/confession-flows") {
@@ -120,6 +128,27 @@ class ApiError extends Error {
   ) {
     super(message);
   }
+}
+
+async function chatAgent(request: Request, env: Env): Promise<Response> {
+  requireUserId(request);
+  const body = await readJson<{ messages?: ChatMessage[] }>(request);
+  const messages = normalizeChatMessages(body.messages);
+  const result = await chatWithStepFun(env, messages);
+  return ok({
+    message: {
+      role: "assistant",
+      content: result.content,
+    },
+    agent: result.meta,
+  });
+}
+
+async function streamAgent(request: Request, env: Env): Promise<Response> {
+  requireUserId(request);
+  const body = await readJson<{ messages?: ChatMessage[] }>(request);
+  const messages = normalizeChatMessages(body.messages);
+  return streamStepFunChat(env, messages);
 }
 
 async function createConfessionFlow(request: Request, env: Env): Promise<Response> {
@@ -444,6 +473,26 @@ function requireString(value: string | undefined, name: string): string {
     throw new ApiError(40000, `${name} is required`);
   }
   return normalized;
+}
+
+function normalizeChatMessages(messages: ChatMessage[] | undefined): ChatMessage[] {
+  if (!Array.isArray(messages) || messages.length === 0) {
+    throw new ApiError(40000, "messages is required");
+  }
+
+  return messages.map((message, index) => {
+    if (!message || !["system", "user", "assistant"].includes(message.role)) {
+      throw new ApiError(40000, `messages[${index}].role is invalid`);
+    }
+    const content = message.content?.trim();
+    if (!content) {
+      throw new ApiError(40000, `messages[${index}].content is required`);
+    }
+    return {
+      role: message.role,
+      content,
+    };
+  });
 }
 
 function clampRoastLevel(value: number | undefined): number {
