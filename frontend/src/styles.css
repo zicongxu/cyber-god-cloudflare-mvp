@@ -1,0 +1,445 @@
+:root {
+  color-scheme: dark;
+  font-family:
+    "Inter",
+    "PingFang SC",
+    "Hiragino Sans GB",
+    "Microsoft YaHei",
+    system-ui,
+    -apple-system,
+    BlinkMacSystemFont,
+    sans-serif;
+  --bg: #07080c;
+  --bg-panel: rgba(13, 15, 21, 0.8);
+  --surface: rgba(20, 23, 31, 0.92);
+  --surface-strong: rgba(28, 33, 45, 0.94);
+  --line: rgba(255, 255, 255, 0.09);
+  --gold: #d8b36d;
+  --gold-soft: rgba(216, 179, 109, 0.2);
+  --text: #f5efe3;
+  --muted: rgba(245, 239, 227, 0.68);
+  --danger: #ff8e87;
+  --shadow: 0 24px 80px rgba(0, 0, 0, 0.46);
+  --radius-xl: 28px;
+  --radius-lg: 22px;
+  --radius-md: 16px;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  min-height: 100%;
+}
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  color: var(--text);
+  background:
+    radial-gradient(circle at top, rgba(255, 184, 90, 0.18), transparent 30%),
+    radial-gradient(circle at 20% 20%, rgba(255, 255, 255, 0.06), transparent 24%),
+    linear-gradient(180deg, #0b0d12 0%, #07080c 100%);
+}
+
+button,
+textarea,
+input {
+  font: inherit;
+}
+
+button {
+  cursor: pointer;
+}
+
+#app {
+  min-height: 100vh;
+  padding:
+    max(16px, env(safe-area-inset-top))
+    max(14px, env(safe-area-inset-right))
+    max(16px, env(safe-area-inset-bottom))
+    max(14px, env(safe-area-inset-left));
+}
+
+.app-shell {
+  width: min(100%, 480px);
+  min-height: calc(100vh - max(16px, env(safe-area-inset-top)) - max(16px, env(safe-area-inset-bottom)));
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 16px;
+  border: 1px solid var(--line);
+  border-radius: 34px;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.04), transparent 18%),
+    linear-gradient(180deg, rgba(13, 15, 21, 0.92), rgba(9, 10, 14, 0.98));
+  box-shadow: var(--shadow);
+  backdrop-filter: blur(22px);
+}
+
+.topbar {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.eyebrow {
+  margin: 0 0 4px;
+  font-size: 11px;
+  letter-spacing: 0.16em;
+  color: var(--muted);
+  text-transform: uppercase;
+}
+
+.topbar h1 {
+  margin: 0;
+  font-size: 28px;
+  line-height: 1.05;
+  letter-spacing: -0.04em;
+}
+
+.status-pill {
+  flex: 0 0 auto;
+  padding: 9px 12px;
+  border-radius: 999px;
+  border: 1px solid var(--line);
+  background: rgba(255, 255, 255, 0.05);
+  color: var(--muted);
+  font-size: 12px;
+  text-transform: capitalize;
+}
+
+.status-pill.is-loading {
+  color: var(--gold);
+  border-color: rgba(216, 179, 109, 0.28);
+  background: var(--gold-soft);
+}
+
+.profile-chip {
+  display: grid;
+  gap: 10px;
+  padding: 12px 14px;
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--line);
+  background: var(--bg-panel);
+}
+
+.error-banner {
+  display: grid;
+  gap: 6px;
+  padding: 12px 14px;
+  border-radius: var(--radius-lg);
+  border: 1px solid rgba(255, 142, 135, 0.24);
+  background: rgba(255, 142, 135, 0.08);
+  color: var(--danger);
+}
+
+.error-banner span {
+  font-size: 11px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.error-banner p {
+  margin: 0;
+  line-height: 1.55;
+  color: var(--text);
+}
+
+.profile-head,
+.profile-meta,
+.feed-meta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.profile-name {
+  font-weight: 700;
+}
+
+.profile-level,
+.profile-meta,
+.feed-meta,
+.composer-hint,
+.task-duration {
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.profile-stats {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.stat-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 10px;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(255, 255, 255, 0.04);
+  color: var(--text);
+  font-size: 12px;
+}
+
+.feed-shell {
+  flex: 1 1 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  min-height: 0;
+}
+
+.story-feed {
+  flex: 1 1 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.story-item {
+  opacity: 0;
+  transform: translateY(10px);
+  transition:
+    opacity 240ms ease,
+    transform 240ms ease;
+}
+
+.story-item.is-visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.story-item.is-entering {
+  opacity: 0;
+}
+
+.bubble {
+  width: fit-content;
+  max-width: 88%;
+  padding: 13px 14px;
+  border-radius: 22px;
+  border: 1px solid var(--line);
+}
+
+.bubble-user {
+  margin-left: auto;
+  background: rgba(216, 179, 109, 0.12);
+  border-bottom-right-radius: 10px;
+}
+
+.bubble-god {
+  margin-right: auto;
+  background: rgba(255, 255, 255, 0.045);
+  border-bottom-left-radius: 10px;
+}
+
+.bubble-label {
+  margin: 0 0 5px;
+  color: var(--gold);
+  font-size: 11px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.bubble-title,
+.card-title,
+.current-task h3 {
+  margin: 0 0 6px;
+  font-size: 16px;
+  line-height: 1.3;
+}
+
+.bubble-text,
+.card-text,
+.current-task p,
+.system-note p {
+  margin: 0;
+  line-height: 1.55;
+}
+
+.story-card,
+.current-task,
+.settlement-card,
+.system-note {
+  padding: 14px;
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--line);
+  background: var(--surface);
+}
+
+.story-card {
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.03), transparent 20%),
+    var(--surface);
+}
+
+.card-kicker,
+.task-kicker {
+  margin: 0 0 6px;
+  color: var(--gold);
+  font-size: 11px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.step-list {
+  margin: 10px 0 0;
+  padding-left: 18px;
+  color: rgba(245, 239, 227, 0.86);
+}
+
+.step-list li + li {
+  margin-top: 6px;
+}
+
+.card-actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-top: 12px;
+}
+
+.chip-button,
+.decision-pill {
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: rgba(255, 255, 255, 0.05);
+  color: var(--text);
+}
+
+.chip-button {
+  padding: 10px 12px;
+  border-radius: 999px;
+}
+
+.chip-button.is-ghost {
+  background: transparent;
+  color: var(--muted);
+}
+
+.decision-strip {
+  display: flex;
+  gap: 8px;
+}
+
+.decision-pill {
+  flex: 1 1 0;
+  padding: 11px 12px;
+  border-radius: 16px;
+  color: var(--muted);
+}
+
+.decision-pill.is-active {
+  border-color: rgba(216, 179, 109, 0.3);
+  background: var(--gold-soft);
+  color: var(--text);
+}
+
+.composer-panel {
+  display: grid;
+  gap: 9px;
+  padding-top: 2px;
+}
+
+.composer {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 10px;
+  padding: 12px;
+  border-radius: 24px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: rgba(15, 17, 23, 0.94);
+}
+
+.composer textarea {
+  width: 100%;
+  min-height: 48px;
+  resize: none;
+  border: 0;
+  outline: 0;
+  padding: 3px 0;
+  color: var(--text);
+  background: transparent;
+}
+
+.composer textarea::placeholder {
+  color: rgba(245, 239, 227, 0.42);
+}
+
+.submit-button {
+  border: 0;
+  padding: 0 16px;
+  min-width: 110px;
+  border-radius: 18px;
+  background: linear-gradient(135deg, #f2cf84 0%, #c7953e 100%);
+  color: #17130b;
+  font-weight: 700;
+}
+
+.submit-button:disabled {
+  opacity: 0.7;
+  cursor: wait;
+}
+
+.composer-hint {
+  margin: 0;
+  text-align: center;
+}
+
+.feed-meta {
+  padding: 0 4px;
+}
+
+.current-task h3 {
+  font-size: 17px;
+}
+
+.current-task {
+  background:
+    linear-gradient(180deg, rgba(216, 179, 109, 0.07), transparent 36%),
+    var(--surface-strong);
+}
+
+.settlement-card {
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.04), transparent 28%),
+    var(--surface-strong);
+}
+
+.system-note {
+  color: var(--muted);
+}
+
+.system-note p {
+  line-height: 1.5;
+}
+
+@media (max-width: 420px) {
+  #app {
+    padding:
+      max(8px, env(safe-area-inset-top))
+      max(8px, env(safe-area-inset-right))
+      max(8px, env(safe-area-inset-bottom))
+      max(8px, env(safe-area-inset-left));
+  }
+
+  .app-shell {
+    min-height: calc(100vh - max(8px, env(safe-area-inset-top)) - max(8px, env(safe-area-inset-bottom)));
+    border-radius: 28px;
+    padding: 14px;
+  }
+
+  .submit-button {
+    min-width: 96px;
+  }
+}
