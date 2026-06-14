@@ -6,6 +6,7 @@
   "scripts": {
     "dev": "wrangler dev",
     "deploy": "wrangler deploy",
+    "test:stepfun-prompts": "node scripts/test-stepfun-prompts.mjs",
     "typecheck": "tsc --noEmit",
     "db:migrate:local": "wrangler d1 migrations apply cyber_god_mvp --local",
     "db:migrate:remote": "wrangler d1 migrations apply cyber_god_mvp --remote"
