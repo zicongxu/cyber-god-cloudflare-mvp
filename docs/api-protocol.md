@@ -19,7 +19,7 @@
 | 普通/流式聊天定位 | 原文档示例偏“审判/任务” | 当前注入人格明确禁止审判、定罪、惩罚、任务派发 | 已修正为“心灵导师聊天” |
 | 创建忏悔流 | 原文档说 StepFun 串行生成审判和任务 | 当前 StepFun 并发生成审判文案和任务文案；奖励仍由本地模板决定 | 已修正 |
 | 降级任务状态 | 原文档写返回 `waiting_completion` | 当前代码返回 `downgraded_task_assigned`，但新任务自身状态是 `waiting_completion` | 已按实现补充，并标注流程注意点 |
-| 神谕获取 | 原文档有结算示例，但不够明确 | 神谕只在 `/settle` 返回；升级才解锁 | 已补充 |
+| 神谕获取 | 原文档有结算示例，但不够明确 | 黑客松演示模式下，完成任务结算必出神谕 | 已补充 |
 | 错误信息 | 原文档错误码较粗 | 真实错误 message 更具体，如 `content is required`、`messages is required` | 已补充常见错误 |
 
 ### 当前需要产品/后端共同确认的实现注意点
@@ -815,7 +815,7 @@ flow.status == self_confirmed
 }
 ```
 
-### 响应：未升级
+### 响应：未升级但展示神谕
 
 ```json
 {
@@ -824,7 +824,7 @@ flow.status == self_confirmed
   "data": {
     "flow_id": "flow_001",
     "task_id": "task_001",
-    "status": "reward_settled",
+    "status": "oracle_unlocked",
     "settlement": {
       "reward_event_id": "reward_001",
       "reward": {
@@ -845,8 +845,8 @@ flow.status == self_confirmed
       "level_up": false
     },
     "oracle": {
-      "unlocked": false,
-      "text": null
+      "unlocked": true,
+      "text": "算法最懂你的欲望。\n但它从不负责你的未来。"
     },
     "god_reply": "救赎已被见证。今天你没有继续向算法进贡四小时，而是把一小块注意力从推荐流里赎了回来。灵魂结算：Wisdom +1，Discipline +2，EXP +10。",
     "agent": {
@@ -912,9 +912,11 @@ POST /api/v1/tasks/{task_id}/settle
 当前规则：
 
 - 每 30 EXP 升 1 级；
-- 只有升级时才解锁神谕；
-- 未升级时：`oracle.unlocked = false`、`oracle.text = null`；
-- 升级时：`oracle.unlocked = true`、`oracle.text` 为 StepFun 或模板生成的神谕。
+- 黑客松演示模式下，只要任务完成并成功结算，就返回 `oracle.unlocked = true`；
+- `settlement.level_up` 仍然表示真实等级是否提升；
+- `oracle.unlocked` 表示本次是否展示神谕卡片；
+- 因此可能出现 `settlement.level_up = false` 但 `oracle.unlocked = true`；
+- `oracle.text` 为 StepFun 或模板生成的神谕。
 
 ### 前端使用说明
 
@@ -932,14 +934,14 @@ POST /api/v1/tasks/{task_id}/settle
   "data": {
     "flow_id": "flow_001",
     "task_id": "task_001",
-    "status": "reward_settled",
+    "status": "oracle_unlocked",
     "reward_event_id": "reward_001",
     "idempotent": true
   }
 }
 ```
 
-注意：幂等返回里的 `status` 是当前 flow 状态，可能是 `reward_settled` 或 `oracle_unlocked`。
+注意：幂等返回里的 `status` 是当前 flow 状态。黑客松演示模式下，结算成功后通常是 `oracle_unlocked`。
 
 ---
 
@@ -1026,7 +1028,7 @@ compassion = 0
    用户确认完成
 
 4. POST /api/v1/tasks/{task_id}/settle
-   结算奖励，可能解锁神谕
+   结算奖励，并展示神谕
 
 5. GET /api/v1/users/me/profile
    刷新用户档案

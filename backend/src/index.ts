@@ -356,7 +356,8 @@ async function settleTask(request: Request, env: Env, taskId: string): Promise<R
     exp: totalExp % LEVEL_EXP,
   };
   const levelUp = levelGain > 0;
-  const finalStatus: FlowStatus = levelUp ? "oracle_unlocked" : "reward_settled";
+  const unlockOracle = true;
+  const finalStatus: FlowStatus = "oracle_unlocked";
   const rewardEventId = newId("reward");
   const now = nowIso();
   const confession = await env.DB.prepare("SELECT behavior_type FROM confessions WHERE id = ? AND user_id = ?")
@@ -369,7 +370,7 @@ async function settleTask(request: Request, env: Env, taskId: string): Promise<R
     reward,
     before,
     after,
-    levelUp,
+    levelUp: unlockOracle,
   });
   const oracleText = settlementCopy.oracle_text;
 
@@ -382,7 +383,7 @@ async function settleTask(request: Request, env: Env, taskId: string): Promise<R
     env.DB.prepare(
       "INSERT INTO reward_events (id, user_id, task_id, event_type, reward_wisdom, reward_discipline, reward_courage, reward_compassion, reward_exp, before_level, after_level, before_exp, after_exp, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
     ).bind(rewardEventId, userId, taskId, "reward_settled", reward.wisdom, reward.discipline, reward.courage, reward.compassion, reward.exp, before.level, after.level, before.exp, after.exp, now),
-    ...(levelUp && oracleText
+    ...(unlockOracle && oracleText
       ? [
           env.DB.prepare("INSERT INTO oracle_unlocks (id, user_id, flow_id, level, oracle_text, unlocked_at) VALUES (?, ?, ?, ?, ?, ?)")
             .bind(newId("oracle"), userId, flow.id, after.level, oracleText, now),
@@ -404,7 +405,7 @@ async function settleTask(request: Request, env: Env, taskId: string): Promise<R
       level_up: levelUp,
     },
     oracle: {
-      unlocked: levelUp,
+      unlocked: unlockOracle,
       text: oracleText,
     },
     god_reply: settlementCopy.god_reply,
