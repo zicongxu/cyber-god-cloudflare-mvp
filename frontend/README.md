@@ -13,7 +13,13 @@ GodChat 首版前端原型，采用原生 HTML/CSS/JavaScript 的轻量模块化
 
 ## 运行方式
 
-默认后端地址为 `https://cyber-god-api.hi542994938.workers.dev`。
+默认流程 API 地址为 `https://cyber-god-api.hi542994938.workers.dev`。
+默认流式聊天 API 地址也指向同一个 worker 域名。
+
+如需单独覆盖，可使用查询参数：
+
+- `?flowApiBase=...`
+- `?chatApiBase=...`
 
 本地可以直接起静态服务器：
 

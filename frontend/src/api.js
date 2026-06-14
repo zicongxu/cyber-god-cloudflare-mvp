@@ -127,31 +127,31 @@ async function requestStream(apiBase, path, options = {}) {
   return result;
 }
 
-export function createApiClient(apiBase) {
+export function createApiClient({ flowBase, chatBase }) {
   return {
     createConfessionFlow(payload) {
-      return requestJson(apiBase, "/api/v1/confession-flows", { body: payload });
+      return requestJson(flowBase, "/api/v1/confession-flows", { body: payload });
     },
     getConfessionFlow(flowId) {
-      return requestGet(apiBase, `/api/v1/confession-flows/${encodeURIComponent(flowId)}`);
+      return requestGet(flowBase, `/api/v1/confession-flows/${encodeURIComponent(flowId)}`);
     },
     startCompletionRitual(taskId, payload) {
-      return requestJson(apiBase, `/api/v1/tasks/${encodeURIComponent(taskId)}/completion-ritual`, { body: payload });
+      return requestJson(flowBase, `/api/v1/tasks/${encodeURIComponent(taskId)}/completion-ritual`, { body: payload });
     },
     downgradeTask(taskId, payload) {
-      return requestJson(apiBase, `/api/v1/tasks/${encodeURIComponent(taskId)}/downgrade`, { body: payload });
+      return requestJson(flowBase, `/api/v1/tasks/${encodeURIComponent(taskId)}/downgrade`, { body: payload });
     },
     selfConfirmTask(taskId, payload) {
-      return requestJson(apiBase, `/api/v1/tasks/${encodeURIComponent(taskId)}/self-confirm`, { body: payload });
+      return requestJson(flowBase, `/api/v1/tasks/${encodeURIComponent(taskId)}/self-confirm`, { body: payload });
     },
     settleTask(taskId, payload) {
-      return requestJson(apiBase, `/api/v1/tasks/${encodeURIComponent(taskId)}/settle`, { body: payload });
+      return requestJson(flowBase, `/api/v1/tasks/${encodeURIComponent(taskId)}/settle`, { body: payload });
     },
     getProfile() {
-      return requestGet(apiBase, "/api/v1/users/me/profile");
+      return requestGet(flowBase, "/api/v1/users/me/profile");
     },
     streamAgentChat(payload, options = {}) {
-      return requestStream(apiBase, "/api/v1/agent/chat-stream", {
+      return requestStream(chatBase, "/api/v1/agent/chat-stream", {
         body: payload,
         onChunk: options.onChunk,
       });

@@ -3,29 +3,39 @@ import { createInitialState, loadState, normalizeState, randomId, saveState } fr
 import { renderApp } from "./render.js";
 
 const MAX_TIMELINE = 5;
-const DEFAULT_API_BASE = "https://cyber-god-api.hi542994938.workers.dev";
+const DEFAULT_FLOW_API_BASE = "https://cyber-god-api.hi542994938.workers.dev";
+const DEFAULT_CHAT_API_BASE = "https://cyber-god-api.hi542994938.workers.dev";
 const LEGACY_LOCAL_API_BASE = "http://localhost:8787";
 
-function resolveApiBase() {
+function readBase(key, fallback) {
   const url = new URL(window.location.href);
-  const fromQuery = url.searchParams.get("apiBase");
+  const fromQuery = url.searchParams.get(key);
   if (fromQuery) {
-    window.localStorage.setItem("godchat.apiBase", fromQuery);
+    window.localStorage.setItem(`godchat.${key}`, fromQuery);
     return fromQuery.replace(/\/$/, "");
   }
 
-  const fromStorage = window.localStorage.getItem("godchat.apiBase");
+  const fromStorage = window.localStorage.getItem(`godchat.${key}`);
   if (fromStorage) {
     if (fromStorage.replace(/\/$/, "") === LEGACY_LOCAL_API_BASE) {
-      window.localStorage.setItem("godchat.apiBase", DEFAULT_API_BASE);
-      return DEFAULT_API_BASE;
+      window.localStorage.setItem(`godchat.${key}`, fallback);
+      return fallback;
     }
 
     return fromStorage.replace(/\/$/, "");
   }
 
-  window.localStorage.setItem("godchat.apiBase", DEFAULT_API_BASE);
-  return DEFAULT_API_BASE;
+  window.localStorage.setItem(`godchat.${key}`, fallback);
+  return fallback;
+}
+
+function resolveApiBases() {
+  const url = new URL(window.location.href);
+  void url;
+  return {
+    flowBase: readBase("flowApiBase", DEFAULT_FLOW_API_BASE),
+    chatBase: readBase("chatApiBase", DEFAULT_CHAT_API_BASE),
+  };
 }
 
 function createMessage(partial) {
@@ -45,12 +55,12 @@ function createMessage(partial) {
 }
 
 export function createApp(root) {
-  const apiBase = resolveApiBase();
-  const api = createApiClient(apiBase);
+  const apiBases = resolveApiBases();
+  const api = createApiClient(apiBases);
   const savedState = loadState();
   let state = normalizeState({
     ...savedState,
-    apiBase,
+    apiBase: apiBases.flowBase,
     loading: false,
     error: null,
     bootstrapped: true,
@@ -65,7 +75,7 @@ export function createApp(root) {
     const next = typeof updater === "function" ? updater(state) : { ...state, ...updater };
     state = normalizeState({
       ...next,
-      apiBase,
+      apiBase: apiBases.flowBase,
       bootstrapped: true,
     });
     persist();
@@ -215,8 +225,8 @@ export function createApp(root) {
       console.warn("restore failed", error);
       clearFlow();
       setState((current) => ({
-        ...createInitialState(),
-        apiBase,
+      ...createInitialState(),
+        apiBase: apiBases.flowBase,
         profile: current.profile,
         bootstrapped: true,
       }));
@@ -324,7 +334,7 @@ export function createApp(root) {
     state = normalizeState({
       ...state,
       ...buildTimelineFromFlow(flow, profile),
-      apiBase,
+      apiBase: apiBases.flowBase,
       bootstrapped: true,
       lastSyncedAt: new Date().toISOString(),
     });
