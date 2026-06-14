@@ -34,3 +34,31 @@ TypeScript
 协议文档见 [docs/api-protocol.md](docs/api-protocol.md)。
 
 部署说明见 [docs/deploy.md](docs/deploy.md)。
+
+## CLI 入口
+
+后端目录内已提供赛博上帝终端入口：
+
+```bash
+cd backend
+npm run dev
+# 另开终端
+npm run god:enter
+```
+
+也可以使用命令式闭环：
+
+```bash
+npm run god -- confess "神啊，我今天刷了三小时短视频"
+npm run god -- ritual
+npm run god -- confirm "神明，我诚实完成了，这次没有糊弄自己。"
+npm run god -- settle
+npm run god -- profile
+```
+
+更多命令见：
+
+```bash
+npm run god -- help
+```
+
