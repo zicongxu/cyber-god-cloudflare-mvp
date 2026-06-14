@@ -90,13 +90,102 @@ completion_ritual_started
 |---|---|
 | 用户提交忏悔 | `POST /api/v1/confession-flows` |
 | 页面刷新恢复当前流程 | `GET /api/v1/confession-flows/{flow_id}` |
+| 健康检查 | `GET /api/v1/health` |
+| StepFun 普通对话 | `POST /api/v1/agent/chat` |
+| StepFun 流式对话 | `POST /api/v1/agent/chat-stream` |
 | 点击请求神明见证 | `POST /api/v1/tasks/{task_id}/completion-ritual` |
 | 选择未完成 | `POST /api/v1/tasks/{task_id}/downgrade` |
 | 选择诚实完成并确认 | `POST /api/v1/tasks/{task_id}/self-confirm` |
 | 展示灵魂结算 | `POST /api/v1/tasks/{task_id}/settle` |
 | 查看灵魂档案 | `GET /api/v1/users/me/profile` |
 
-## 4. 创建忏悔审判流
+## 4. 健康检查
+
+```http
+GET /api/v1/health
+```
+
+响应：
+
+```json
+{
+  "code": 0,
+  "message": "ok",
+  "data": {
+    "status": "ok",
+    "agent_provider": "stepfun",
+    "stepfun_model": "step-3.5-flash"
+  }
+}
+```
+
+`agent_provider` 为 `stepfun` 表示后端已配置 StepFun API Key；为 `template` 表示当前使用模板兜底。
+
+## 5. StepFun 普通对话
+
+```http
+POST /api/v1/agent/chat
+```
+
+请求：
+
+```json
+{
+  "messages": [
+    {
+      "role": "system",
+      "content": "你是赛博上帝，幽默、毒舌，但只审判行为，不羞辱人格。"
+    },
+    {
+      "role": "user",
+      "content": "神啊，我今天又拖延了。"
+    }
+  ]
+}
+```
+
+响应：
+
+```json
+{
+  "code": 0,
+  "message": "ok",
+  "data": {
+    "message": {
+      "role": "assistant",
+      "content": "..."
+    },
+    "agent": {
+      "provider": "stepfun",
+      "model": "step-3.7-flash",
+      "fallback": false
+    }
+  }
+}
+```
+
+## 6. StepFun 流式对话
+
+```http
+POST /api/v1/agent/chat-stream
+```
+
+请求体同普通对话。
+
+响应：
+
+```http
+Content-Type: text/event-stream; charset=utf-8
+```
+
+后端会透传 StepFun 的 SSE 流。前端按 OpenAI Chat Completions 流式格式解析：
+
+```text
+data: {"choices":[{"delta":{"content":"..."}}]}
+data: [DONE]
+```
+
+## 7. 创建忏悔审判流
 
 ```http
 POST /api/v1/confession-flows
@@ -156,6 +245,11 @@ POST /api/v1/confession-flows
         "exp": 10
       },
       "status": "waiting_completion"
+    },
+    "agent": {
+      "provider": "stepfun",
+      "model": "step-3.5-flash",
+      "fallback": false
     }
   }
 }
@@ -169,7 +263,14 @@ POST /api/v1/confession-flows
 - `task` 用于展示首个弥补任务卡片。
 - 该接口不返回历史时间线，不承担档案页职责。
 
-## 5. 查询流程详情
+说明：
+
+- 后端调用 StepFun 生成审判和任务；
+- 线上配置 `STEPFUN_API_KEY` 后，StepFun 调用失败会直接返回错误，不再使用模板兜底；
+- 仅本地未配置 `STEPFUN_API_KEY` 时，后端才使用模板生成，方便离线开发；
+- 前端可以忽略 `agent` 字段，不影响主流程。
+
+## 8. 查询流程详情
 
 ```http
 GET /api/v1/confession-flows/{flow_id}
@@ -222,7 +323,7 @@ GET /api/v1/confession-flows/{flow_id}
 - `confession`、`judgement`、`task` 三块内容可直接重建当前聊天流。
 - 该接口不提供最近历史列表，只恢复当前流程。
 
-## 6. 开启完成仪式
+## 9. 开启完成仪式
 
 ```http
 POST /api/v1/tasks/{task_id}/completion-ritual
@@ -270,7 +371,7 @@ POST /api/v1/tasks/{task_id}/completion-ritual
 - `completion_ritual_started` 是一个独立页面态或对话态。
 - 用户选择 `completed` 或 `not_completed` 后，前端分别继续走 `self-confirm` 或 `downgrade`。
 
-## 7. 未完成，生成 Tiny 任务
+## 10. 未完成，生成 Tiny 任务
 
 ```http
 POST /api/v1/tasks/{task_id}/downgrade
@@ -324,7 +425,7 @@ POST /api/v1/tasks/{task_id}/downgrade
 - `message` 用于展示系统的态度反馈。
 - `task` 直接替换当前任务卡片，不需要离开当前流程。
 
-## 8. 自我确认完成
+## 11. 自我确认完成
 
 ```http
 POST /api/v1/tasks/{task_id}/self-confirm
@@ -371,7 +472,7 @@ POST /api/v1/tasks/{task_id}/self-confirm
 - `witness` 首版只需要做成可选文本补充区。
 - 返回 `self_confirmed` 后，前端继续调用 `settle` 进入结算阶段。
 
-## 9. 结算奖励
+## 12. 结算奖励
 
 ```http
 POST /api/v1/tasks/{task_id}/settle
@@ -418,7 +519,12 @@ POST /api/v1/tasks/{task_id}/settle
       "unlocked": true,
       "text": "你不是没有时间。你只是把时间送给了别人设计的人生。"
     },
-    "god_reply": "救赎已被见证。今天你没有继续向算法进贡，也没有把承诺扔进明天的垃圾桶。"
+    "god_reply": "救赎已被见证。今天你没有继续向算法进贡，也没有把承诺扔进明天的垃圾桶。",
+    "agent": {
+      "provider": "stepfun",
+      "model": "step-3.7-flash",
+      "fallback": false
+    }
   }
 }
 ```
@@ -446,7 +552,7 @@ POST /api/v1/tasks/{task_id}/settle
 }
 ```
 
-## 10. 查询用户灵魂档案
+## 13. 查询用户灵魂档案
 
 ```http
 GET /api/v1/users/me/profile
@@ -485,7 +591,7 @@ GET /api/v1/users/me/profile
 - 当前协议没有历史任务列表、时间线或最近 N 次忏悔记录接口，因此前端的“行为记录区”应按摘要卡设计，而不是完整档案列表。
 - 如果后续要做完整历史页，需要新增独立接口。
 
-## 11. 错误码
+## 14. 错误码
 
 | code | message | 说明 |
 |---:|---|---|

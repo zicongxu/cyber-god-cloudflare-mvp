@@ -1,7 +1,8 @@
+import { chatWithStepFun, createConfessionPlan, createSettlementCopy, streamStepFunChat, type ChatMessage } from "./agent";
 import { newId, nowIso } from "./id";
 import { fail, ok } from "./response";
 import { assertTransition } from "./state-machine";
-import { judgementFor, oracleFor, taskFor, tinyTask } from "./templates";
+import { tinyTask } from "./templates";
 import type { BehaviorDiagnosis, Env, FlowStatus, JudgementResult, RedemptionTaskTemplate, Reward } from "./types";
 
 type FlowRow = {
@@ -57,6 +58,22 @@ export default {
     const path = url.pathname;
 
     try {
+      if (request.method === "GET" && path === "/api/v1/health") {
+        return ok({
+          status: "ok",
+          agent_provider: env.STEPFUN_API_KEY ? "stepfun" : "template",
+          stepfun_model: env.STEPFUN_MODEL ?? "step-3.7-flash",
+        });
+      }
+
+      if (request.method === "POST" && path === "/api/v1/agent/chat") {
+        return await chatAgent(request, env);
+      }
+
+      if (request.method === "POST" && path === "/api/v1/agent/chat-stream") {
+        return await streamAgent(request, env);
+      }
+
       if (request.method === "POST" && path === "/api/v1/confession-flows") {
         return await createConfessionFlow(request, env);
       }
@@ -113,6 +130,27 @@ class ApiError extends Error {
   }
 }
 
+async function chatAgent(request: Request, env: Env): Promise<Response> {
+  requireUserId(request);
+  const body = await readJson<{ messages?: ChatMessage[] }>(request);
+  const messages = normalizeChatMessages(body.messages);
+  const result = await chatWithStepFun(env, messages);
+  return ok({
+    message: {
+      role: "assistant",
+      content: result.content,
+    },
+    agent: result.meta,
+  });
+}
+
+async function streamAgent(request: Request, env: Env): Promise<Response> {
+  requireUserId(request);
+  const body = await readJson<{ messages?: ChatMessage[] }>(request);
+  const messages = normalizeChatMessages(body.messages);
+  return streamStepFunChat(env, messages);
+}
+
 async function createConfessionFlow(request: Request, env: Env): Promise<Response> {
   const userId = requireUserId(request);
   const body = await readJson<{ content?: string; roast_level?: number }>(request);
@@ -126,8 +164,8 @@ async function createConfessionFlow(request: Request, env: Env): Promise<Respons
   await ensureProfile(env, userId, now);
 
   const diagnosis = diagnoseBehavior(content);
-  const judgement = judgementFor(diagnosis.behavior_type, roastLevel);
-  const task = taskFor(diagnosis.behavior_type);
+  const plan = await createConfessionPlan({ env, content, roastLevel, diagnosis });
+  const { judgement, task } = plan;
 
   const flowId = newId("flow");
   const confessionId = newId("confession");
@@ -150,9 +188,10 @@ async function createConfessionFlow(request: Request, env: Env): Promise<Respons
   return ok({
     flow_id: flowId,
     status: "waiting_completion",
-    diagnosis,
+    diagnosis: plan.diagnosis,
     judgement: formatJudgement(judgementId, judgement),
     task: formatTask(taskId, task, "waiting_completion"),
+    agent: plan.agent_meta,
   });
 }
 
@@ -308,7 +347,16 @@ async function settleTask(request: Request, env: Env, taskId: string): Promise<R
   const finalStatus: FlowStatus = levelUp ? "oracle_unlocked" : "reward_settled";
   const rewardEventId = newId("reward");
   const now = nowIso();
-  const oracleText = levelUp ? oracleFor("") : null;
+  const confession = await env.DB.prepare("SELECT behavior_type FROM confessions WHERE id = ? AND user_id = ?")
+    .bind(task.confession_id, userId)
+    .first<{ behavior_type: string }>();
+  const settlementCopy = await createSettlementCopy({
+    env,
+    behaviorType: confession?.behavior_type ?? "generic",
+    taskTitle: task.title,
+    levelUp,
+  });
+  const oracleText = settlementCopy.oracle_text;
 
   await env.DB.batch([
     env.DB.prepare(
@@ -344,7 +392,8 @@ async function settleTask(request: Request, env: Env, taskId: string): Promise<R
       unlocked: levelUp,
       text: oracleText,
     },
-    god_reply: "救赎已被见证。今天你没有继续向算法进贡，也没有把承诺扔进明天的垃圾桶。",
+    god_reply: settlementCopy.god_reply,
+    agent: settlementCopy.agent_meta,
   });
 }
 
@@ -424,6 +473,26 @@ function requireString(value: string | undefined, name: string): string {
     throw new ApiError(40000, `${name} is required`);
   }
   return normalized;
+}
+
+function normalizeChatMessages(messages: ChatMessage[] | undefined): ChatMessage[] {
+  if (!Array.isArray(messages) || messages.length === 0) {
+    throw new ApiError(40000, "messages is required");
+  }
+
+  return messages.map((message, index) => {
+    if (!message || !["system", "user", "assistant"].includes(message.role)) {
+      throw new ApiError(40000, `messages[${index}].role is invalid`);
+    }
+    const content = message.content?.trim();
+    if (!content) {
+      throw new ApiError(40000, `messages[${index}].content is required`);
+    }
+    return {
+      role: message.role,
+      content,
+    };
+  });
 }
 
 function clampRoastLevel(value: number | undefined): number {

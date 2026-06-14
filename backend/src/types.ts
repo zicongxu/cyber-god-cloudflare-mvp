@@ -1,5 +1,9 @@
 export interface Env {
   DB: D1Database;
+  STEPFUN_API_KEY?: string;
+  STEPFUN_MODEL?: string;
+  STEPFUN_BASE_URL?: string;
+  STEPFUN_REASONING_EFFORT?: string;
 }
 
 export type FlowStatus =
@@ -40,4 +44,24 @@ export interface RedemptionTaskTemplate {
   steps: string[];
   duration_minutes: number;
   reward: Reward;
+}
+
+export interface ConfessionPlan {
+  diagnosis: BehaviorDiagnosis;
+  judgement: JudgementResult;
+  task: RedemptionTaskTemplate;
+  agent_meta: AgentMeta;
+}
+
+export interface SettlementCopy {
+  god_reply: string;
+  oracle_text: string | null;
+  agent_meta: AgentMeta;
+}
+
+export interface AgentMeta {
+  provider: "stepfun" | "template";
+  model: string | null;
+  fallback: boolean;
+  fallback_reason?: string;
 }
