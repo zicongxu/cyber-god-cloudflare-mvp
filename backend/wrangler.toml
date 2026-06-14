@@ -1,0 +1,8 @@
+name = "cyber-god-api"
+main = "src/index.ts"
+compatibility_date = "2026-06-14"
+
+[[d1_databases]]
+binding = "DB"
+database_name = "cyber_god_mvp"
+database_id = "YOUR_D1_DATABASE_ID"
