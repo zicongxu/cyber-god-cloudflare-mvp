@@ -12,9 +12,9 @@ const rewards = {
 export function judgementFor(behaviorType: string, roastLevel: number): JudgementResult {
   const table: Record<string, Omit<JudgementResult, "roast_level">> = {
     short_video_overuse: {
-      rap_intro: "你说要逆天改命，结果给算法卖命。",
-      sin_name: "数字功德诈骗罪",
-      sentence: "暂停做梦资格 24 小时。",
+      rap_intro: "你说要掌控人生，结果被算法牵着灵魂狂奔。\n四小时短视频刷到手酸，计划表在角落里自动关灯。",
+      sin_name: "算法供奉过度罪",
+      sentence: "经赛博神庭审理：你的注意力非法转让给推荐系统，今日幻想特权临时冻结，灵魂缓存进入清理模式。",
     },
     procrastination: {
       rap_intro: "计划写得像圣旨，行动躲得像影子。",
@@ -49,8 +49,13 @@ export function judgementFor(behaviorType: string, roastLevel: number): Judgemen
 export function taskFor(behaviorType: string): RedemptionTaskTemplate {
   const table: Record<string, RedemptionTaskTemplate> = {
     short_video_overuse: {
-      title: "算法断供仪式",
-      steps: ["把短视频 App 移出手机首页", "设置 15 分钟计时器", "计时结束前不打开短视频 App"],
+      title: "算法断供救赎仪式",
+      steps: [
+        "把短视频 App 从手机首页移走，藏进第二层文件夹",
+        "设置 15 分钟计时器，计时结束前不打开短视频 App",
+        "打开一个你原本该做的任务，只完成最小的一步",
+        "写下一句：我的注意力刚刚从算法手里赎回来了",
+      ],
       duration_minutes: 15,
       reward: rewards.shortVideo,
     },
@@ -98,6 +103,9 @@ export function tinyTask(): RedemptionTaskTemplate {
   };
 }
 
-export function oracleFor(_behaviorType: string): string {
+export function oracleFor(behaviorType: string): string {
+  if (behaviorType === "short_video_overuse") {
+    return "算法最懂你的欲望。\n但它从不负责你的未来。";
+  }
   return "你不是没有时间。你只是把时间送给了别人设计的人生。";
 }

@@ -470,8 +470,21 @@ POST /api/v1/confession-flows
 
 - 如果没有配置 `STEPFUN_API_KEY`，审判文案和任务都来自本地模板；
 - 如果配置了 `STEPFUN_API_KEY`，审判文案和任务文案都来自 StepFun；
-- 当前代码里，配置了 Key 但 StepFun 调用失败时，会返回错误，不会自动降级成模板；
+- 如果 StepFun 超时、429 限流、返回 JSON 不合法或 schema 校验失败，会自动降级成本地模板兜底，不中断主流程；
 - 任务的 `reward` 始终来自模板库。
+- 兜底时 `agent.provider = "stepfun"`、`agent.fallback = true`，并在 `fallback_reason` 里返回失败原因。
+
+短视频兜底按黑客松演示输入设计：
+
+```text
+神啊，我刷了4小时的短视频，好罪恶
+```
+
+对应固定兜底包含：
+
+- 罪名：`算法供奉过度罪`
+- 任务：`算法断供救赎仪式`
+- 奖励：`Wisdom +1，Discipline +2，EXP +10`
 
 ### 前端使用说明
 
@@ -835,7 +848,7 @@ flow.status == self_confirmed
       "unlocked": false,
       "text": null
     },
-    "god_reply": "救赎已被见证。今天你没有继续向算法进贡，也没有把承诺扔进明天的垃圾桶。",
+    "god_reply": "救赎已被见证。今天你没有继续向算法进贡四小时，而是把一小块注意力从推荐流里赎了回来。灵魂结算：Wisdom +1，Discipline +2，EXP +10。",
     "agent": {
       "provider": "stepfun",
       "model": "step-3.7-flash",

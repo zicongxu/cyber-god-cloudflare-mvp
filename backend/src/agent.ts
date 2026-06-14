@@ -55,7 +55,12 @@ export async function createConfessionPlan(params: {
       agent_meta: agentMeta,
     };
   } catch (error) {
-    throw new Error(error instanceof Error ? error.message : "StepFun request failed");
+    return createTemplatePlan(
+      params.content,
+      params.roastLevel,
+      params.diagnosis,
+      stepfunMeta(params.env, true, error),
+    );
   }
 }
 
@@ -68,11 +73,7 @@ export async function createSettlementCopy(params: {
   after: { level: number; exp: number };
   levelUp: boolean;
 }): Promise<SettlementCopy> {
-  const fallback: SettlementCopy = {
-    god_reply: "救赎已被见证。今天你没有继续向算法进贡，也没有把承诺扔进明天的垃圾桶。",
-    oracle_text: params.levelUp ? oracleFor(params.behaviorType) : null,
-    agent_meta: templateMeta(),
-  };
+  const fallback = createTemplateSettlementCopy(params, templateMeta());
 
   if (!params.env.STEPFUN_API_KEY) {
     return fallback;
@@ -223,17 +224,56 @@ export async function createSettlementCopy(params: {
       agent_meta: stepfunMeta(params.env, false),
     };
   } catch (error) {
-    throw new Error(error instanceof Error ? error.message : "StepFun request failed");
+    return createTemplateSettlementCopy(params, stepfunMeta(params.env, true, error));
   }
 }
 
-function createTemplatePlan(content: string, roastLevel: number, diagnosis: BehaviorDiagnosis): ConfessionPlan {
+function createTemplatePlan(
+  content: string,
+  roastLevel: number,
+  diagnosis: BehaviorDiagnosis,
+  agentMeta: AgentMeta = templateMeta(),
+): ConfessionPlan {
   return {
     diagnosis,
     judgement: judgementFor(diagnosis.behavior_type, roastLevel),
     task: taskFor(diagnosis.behavior_type),
-    agent_meta: templateMeta(),
+    agent_meta: agentMeta,
   };
+}
+
+function createTemplateSettlementCopy(
+  params: {
+    behaviorType: string;
+    reward: Reward;
+    levelUp: boolean;
+  },
+  agentMeta: AgentMeta,
+): SettlementCopy {
+  const rewardText = formatRewardText(params.reward);
+  const shortVideoReply = params.levelUp
+    ? `救赎已被见证。你从算法祭坛前后退了一步，虽然不算封神，但算夺回了一小块注意力领土。灵魂结算：${rewardText}。等级提升。`
+    : `救赎已被见证。今天你没有继续向算法进贡四小时，而是把一小块注意力从推荐流里赎了回来。灵魂结算：${rewardText}。`;
+
+  return {
+    god_reply: params.behaviorType === "short_video_overuse"
+      ? shortVideoReply
+      : `救赎已被见证。今天你没有继续向借口进贡，而是完成了一个小行动。灵魂结算：${rewardText}。${params.levelUp ? "等级提升。" : ""}`,
+    oracle_text: params.levelUp ? oracleFor(params.behaviorType) : null,
+    agent_meta: agentMeta,
+  };
+}
+
+function formatRewardText(reward: Reward): string {
+  const parts = [
+    reward.wisdom ? `Wisdom +${reward.wisdom}` : null,
+    reward.discipline ? `Discipline +${reward.discipline}` : null,
+    reward.courage ? `Courage +${reward.courage}` : null,
+    reward.compassion ? `Compassion +${reward.compassion}` : null,
+    `EXP +${reward.exp}`,
+  ].filter(Boolean);
+
+  return parts.join("，");
 }
 
 export async function chatWithStepFun(env: Env, messages: ChatMessage[]): Promise<{ content: string; meta: AgentMeta }> {
