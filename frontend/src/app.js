@@ -57,6 +57,14 @@ function keepTimeline(entries) {
   return entries;
 }
 
+function formatJudgementText(judgement) {
+  if (!judgement) {
+    return "";
+  }
+
+  return [judgement.rap_intro, judgement.sentence].filter(Boolean).join("\n");
+}
+
 export function createApp(root) {
   const apiBases = resolveApiBases();
   const api = createApiClient(apiBases);
@@ -73,6 +81,8 @@ export function createApp(root) {
     top: 0,
     atBottom: true,
   };
+  let streamDomFrame = 0;
+  const pendingStreamDomUpdates = new Map();
 
   function persist() {
     saveState(state);
@@ -220,6 +230,50 @@ export function createApp(root) {
     }));
   }
 
+  function flushStreamDomUpdates() {
+    streamDomFrame = 0;
+
+    for (const [entryId, patch] of pendingStreamDomUpdates) {
+      const entryNode = Array.from(root.querySelectorAll(".story-item")).find(
+        (item) => item instanceof HTMLElement && item.dataset.id === entryId,
+      );
+      if (!(entryNode instanceof HTMLElement)) {
+        continue;
+      }
+
+      const textNode =
+        entryNode.querySelector(".bubble-text") ||
+        entryNode.querySelector(".card-text") ||
+        entryNode.querySelector(".system-note p");
+      if (textNode && typeof patch.text === "string") {
+        textNode.textContent = patch.text;
+      }
+
+      const titleNode = entryNode.querySelector(".bubble-title") || entryNode.querySelector(".card-title");
+      if (titleNode && typeof patch.title === "string") {
+        titleNode.textContent = patch.title;
+      }
+
+      entryNode.classList.toggle("is-streaming", Boolean(patch.meta?.streaming));
+    }
+
+    pendingStreamDomUpdates.clear();
+  }
+
+  function updateStreamingTimelineEntry(entryId, patch) {
+    state = {
+      ...state,
+      timeline: state.timeline.map((entry) => (entry.id === entryId ? { ...entry, ...patch } : entry)),
+    };
+
+    const currentPatch = pendingStreamDomUpdates.get(entryId) || {};
+    pendingStreamDomUpdates.set(entryId, { ...currentPatch, ...patch });
+
+    if (!streamDomFrame) {
+      streamDomFrame = window.requestAnimationFrame(flushStreamDomUpdates);
+    }
+  }
+
   function appendTimelineEntry(entry) {
     const next = createMessage(entry);
     setState((current) => ({
@@ -274,7 +328,7 @@ export function createApp(root) {
         {
           onChunk({ text: nextText }) {
             text = nextText;
-            updateTimelineEntry(streamId, {
+            updateStreamingTimelineEntry(streamId, {
               text: text || "……",
               meta: { streaming: true },
             });
@@ -282,6 +336,7 @@ export function createApp(root) {
         },
       );
 
+      pendingStreamDomUpdates.delete(streamId);
       updateTimelineEntry(streamId, {
         text: text || "……",
         meta: { streaming: false },
@@ -289,6 +344,7 @@ export function createApp(root) {
       scrollFeedToLatest();
       return text;
     } catch (error) {
+      pendingStreamDomUpdates.delete(streamId);
       updateTimelineEntry(streamId, {
         title: "神明开小差了",
         text: error.message || "这位神今天网络不太稳。",
@@ -348,7 +404,8 @@ export function createApp(root) {
         kind: "god",
         tone: "神明判词",
         title: flow.judgement.sin_name || "审判已下",
-        text: `${flow.judgement.rap_intro || ""} ${flow.judgement.sentence || ""}`.trim(),
+        text: formatJudgementText(flow.judgement),
+        meta: { sinName: flow.judgement.sin_name || "" },
       });
     }
 
@@ -476,6 +533,15 @@ export function createApp(root) {
         roast_level: 3,
       });
       const confession = { content: trimmed, behavior_type: response.diagnosis?.behavior_type || "" };
+      const judgementItem = response.judgement
+        ? createMessage({
+            kind: "god",
+            tone: "神明判词",
+            title: response.judgement.sin_name || "审判已下",
+            text: formatJudgementText(response.judgement),
+            meta: { sinName: response.judgement.sin_name || "" },
+          })
+        : null;
 
       setState((current) => ({
         ...current,
@@ -493,8 +559,12 @@ export function createApp(root) {
         ritualChoice: "completed",
         loading: true,
         error: null,
+        timeline: judgementItem ? keepTimeline([...current.timeline, judgementItem]) : current.timeline,
         lastSyncedAt: new Date().toISOString(),
       }));
+      if (judgementItem) {
+        revealTimeline([judgementItem.id]);
+      }
 
       try {
         await streamGodReply(trimmed, {

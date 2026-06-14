@@ -75,6 +75,7 @@ function renderTimelineItem(item, age = 0) {
       <article class="story-item bubble bubble-god ${visibleClass} ${streamingClass} ${historyClass}" data-id="${escapeHtml(item.id)}">
         ${item.tone ? `<p class="bubble-label">${escapeHtml(item.tone)}</p>` : ""}
         ${item.title ? `<h3 class="bubble-title">${escapeHtml(item.title)}</h3>` : ""}
+        ${item.meta?.sinName ? `<p class="sin-name-badge"><span>罪名</span>${escapeHtml(item.meta.sinName)}</p>` : ""}
         <p class="bubble-text">${escapeHtml(item.text)}</p>
       </article>
     `;
@@ -256,6 +257,24 @@ function renderError(state) {
   `;
 }
 
+function renderDeityHero(state) {
+  const statusCopy = state.loading
+    ? "小神明正在翻阅你的因果账本。"
+    : state.status === "idle"
+      ? "说吧，今天又把哪件小事拖成史诗了？"
+      : "审判很温柔，但账还是要算清楚。";
+
+  return `
+    <section class="deity-hero">
+      <div class="deity-aura" aria-hidden="true"></div>
+      <img class="deity-avatar" src="./assets/soft-god-avatar.png" alt="闭眼漂浮的小神明" />
+      <div class="deity-copy">
+        <p>${escapeHtml(statusCopy)}</p>
+      </div>
+    </section>
+  `;
+}
+
 function renderOracleModal(state) {
   if (!state.oracleModalOpen || !state.oracle?.unlocked) {
     return "";
@@ -328,7 +347,7 @@ export function renderApp(root, state) {
     <main class="app-shell">
       <header class="topbar">
         <div>
-          <p class="eyebrow">Web 承载 · 移动端 App 风格</p>
+          <p class="eyebrow">移动端 App 风格</p>
           <h1>GodChat</h1>
         </div>
         <div class="status-pill ${state.loading ? "is-loading" : ""}">
@@ -336,6 +355,7 @@ export function renderApp(root, state) {
         </div>
       </header>
 
+      ${renderDeityHero(state)}
       ${renderProfile(state.profile)}
       ${renderError(state)}
 

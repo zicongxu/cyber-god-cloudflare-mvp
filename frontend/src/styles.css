@@ -25,6 +25,402 @@
   --radius-md: 16px;
 }
 
+/* Soft deity theme inspired by the provided hand-drawn character references. */
+:root {
+  color-scheme: light;
+  font-family:
+    "Nunito",
+    "PingFang SC",
+    "Hiragino Sans GB",
+    "Microsoft YaHei",
+    system-ui,
+    -apple-system,
+    BlinkMacSystemFont,
+    sans-serif;
+  --bg: #fff8e9;
+  --bg-panel: rgba(255, 250, 239, 0.76);
+  --surface: rgba(255, 252, 244, 0.9);
+  --surface-strong: rgba(255, 247, 229, 0.96);
+  --line: rgba(185, 143, 73, 0.2);
+  --gold: #c9933d;
+  --gold-soft: rgba(242, 201, 121, 0.28);
+  --text: #5b4326;
+  --muted: rgba(91, 67, 38, 0.62);
+  --danger: #b96558;
+  --shadow: 0 22px 70px rgba(176, 130, 58, 0.2);
+  --paper-shadow: 0 12px 34px rgba(180, 132, 55, 0.14);
+}
+
+body {
+  color: var(--text);
+  background:
+    radial-gradient(circle at 50% 2%, rgba(255, 225, 153, 0.76), transparent 24%),
+    radial-gradient(circle at 12% 18%, rgba(255, 244, 213, 0.92), transparent 26%),
+    radial-gradient(circle at 92% 22%, rgba(255, 207, 126, 0.34), transparent 24%),
+    linear-gradient(180deg, #fffaf0 0%, #f8ecd4 58%, #f2dfbd 100%);
+}
+
+body::before,
+body::after {
+  position: fixed;
+  z-index: -1;
+  border-radius: 999px;
+  pointer-events: none;
+  content: "";
+}
+
+body::before {
+  width: 280px;
+  height: 280px;
+  left: -120px;
+  bottom: -90px;
+  background: rgba(255, 218, 145, 0.36);
+  filter: blur(10px);
+}
+
+body::after {
+  width: 180px;
+  height: 180px;
+  right: -56px;
+  top: 72px;
+  background: rgba(255, 255, 255, 0.72);
+  box-shadow:
+    -80px 90px 0 rgba(255, 232, 182, 0.34),
+    -34px -42px 0 rgba(255, 206, 118, 0.22);
+  filter: blur(1px);
+}
+
+.app-shell {
+  gap: 9px;
+  border: 1px solid rgba(198, 151, 76, 0.28);
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.82), rgba(255, 249, 235, 0.88)),
+    var(--surface);
+  box-shadow:
+    0 26px 70px rgba(157, 113, 47, 0.24),
+    inset 0 1px 0 rgba(255, 255, 255, 0.92);
+}
+
+.topbar {
+  align-items: center;
+}
+
+.eyebrow {
+  color: rgba(145, 106, 48, 0.72);
+  font-weight: 800;
+}
+
+.topbar h1 {
+  color: #6f4c20;
+  font-size: 29px;
+  text-shadow: 0 2px 0 rgba(255, 255, 255, 0.8);
+}
+
+.status-pill {
+  border-color: rgba(199, 151, 72, 0.28);
+  background: rgba(255, 248, 231, 0.88);
+  color: #966a2f;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.86);
+}
+
+.status-pill.is-loading {
+  color: #8a5d1f;
+  border-color: rgba(207, 156, 62, 0.34);
+  background: linear-gradient(135deg, #fff1c7 0%, #f4cb73 100%);
+}
+
+.deity-hero {
+  position: relative;
+  display: grid;
+  grid-template-columns: 94px 1fr;
+  align-items: center;
+  min-height: 112px;
+  padding: 9px 13px 10px 7px;
+  border: 1px solid rgba(203, 158, 82, 0.22);
+  border-radius: 30px;
+  background:
+    radial-gradient(circle at 19% 34%, rgba(255, 222, 151, 0.44), transparent 32%),
+    linear-gradient(135deg, rgba(255, 255, 255, 0.96), rgba(255, 242, 214, 0.86));
+  box-shadow: var(--paper-shadow);
+  overflow: hidden;
+}
+
+.deity-hero::before {
+  position: absolute;
+  inset: auto 16px 12px auto;
+  width: 46px;
+  height: 46px;
+  border-radius: 999px;
+  background:
+    radial-gradient(circle, #fff8d7 0 16%, #f3bf54 36%, rgba(243, 191, 84, 0.1) 68%, transparent 70%);
+  box-shadow:
+    0 0 20px rgba(238, 177, 67, 0.42),
+    inset 0 0 10px rgba(255, 255, 255, 0.72);
+  content: "";
+}
+
+.deity-aura {
+  position: absolute;
+  width: 122px;
+  height: 122px;
+  left: -4px;
+  top: 0;
+  border-radius: 999px;
+  background: radial-gradient(circle, rgba(255, 220, 143, 0.44), transparent 66%);
+}
+
+.deity-avatar {
+  position: relative;
+  z-index: 1;
+  width: 92px;
+  height: 112px;
+  object-fit: contain;
+  filter: drop-shadow(0 8px 12px rgba(169, 119, 43, 0.18));
+  animation: deity-float 4s ease-in-out infinite;
+}
+
+.deity-copy {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  gap: 5px;
+  padding-right: 42px;
+}
+
+.deity-copy span {
+  color: #bd8731;
+  font-size: 11px;
+  font-weight: 900;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+.deity-copy p {
+  margin: 0;
+  color: #6c4b22;
+  font-size: 15px;
+  font-weight: 800;
+  line-height: 1.48;
+}
+
+@keyframes deity-float {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-5px);
+  }
+}
+
+.profile-chip,
+.story-card,
+.current-task,
+.settlement-card,
+.system-note,
+.composer {
+  border-color: rgba(183, 136, 60, 0.22);
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.88), rgba(255, 248, 233, 0.84)),
+    var(--surface);
+  box-shadow: var(--paper-shadow);
+}
+
+.profile-chip {
+  padding: 10px 12px;
+}
+
+.profile-name,
+.profile-level {
+  color: #744f20;
+}
+
+.stat-chip {
+  border-color: rgba(187, 141, 65, 0.22);
+  background: rgba(255, 246, 225, 0.88);
+  color: #704d22;
+}
+
+.stat-chip strong,
+.bubble-label,
+.card-kicker,
+.task-kicker {
+  color: #bd8731;
+}
+
+.feed-meta {
+  color: rgba(113, 77, 31, 0.62);
+  font-weight: 800;
+}
+
+.story-feed {
+  padding: 2px 3px 2px 1px;
+}
+
+.bubble {
+  border-color: rgba(185, 139, 66, 0.2);
+  box-shadow: 0 9px 22px rgba(170, 121, 47, 0.1);
+}
+
+.bubble-user {
+  background:
+    linear-gradient(135deg, rgba(255, 225, 158, 0.76), rgba(246, 201, 113, 0.72));
+  color: #563817;
+}
+
+.bubble-god {
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.94), rgba(255, 247, 231, 0.92));
+  color: #654720;
+}
+
+.bubble-title,
+.card-title,
+.current-task h3 {
+  color: #69491f;
+}
+
+.bubble-text,
+.card-text,
+.current-task p,
+.system-note p,
+.step-list {
+  color: rgba(91, 67, 38, 0.86);
+}
+
+.story-card {
+  background:
+    radial-gradient(circle at top left, rgba(255, 224, 156, 0.34), transparent 36%),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.94), rgba(255, 248, 235, 0.92));
+}
+
+.story-card::before,
+.system-note::before {
+  display: none;
+}
+
+.chip-button,
+.decision-pill {
+  border-color: rgba(180, 130, 52, 0.24);
+  background: rgba(255, 249, 236, 0.9);
+  color: #765122;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.82);
+}
+
+.chip-button:not(.is-ghost),
+.decision-pill.is-active,
+.submit-button,
+.oracle-primary {
+  background: linear-gradient(135deg, #ffe7a6 0%, #f2c466 48%, #d99d3c 100%);
+  color: #5a3810;
+  border-color: rgba(172, 117, 35, 0.28);
+  box-shadow:
+    0 8px 18px rgba(196, 139, 42, 0.22),
+    inset 0 1px 0 rgba(255, 255, 255, 0.72);
+}
+
+.chip-button.is-ghost,
+.decision-pill {
+  color: rgba(91, 67, 38, 0.66);
+}
+
+.composer {
+  background: rgba(255, 253, 248, 0.92);
+}
+
+.composer textarea {
+  color: #5b4326;
+}
+
+.composer textarea::placeholder {
+  color: rgba(104, 76, 38, 0.42);
+}
+
+.composer-hint {
+  color: rgba(103, 76, 39, 0.6);
+  font-weight: 700;
+}
+
+.error-banner {
+  border-color: rgba(190, 96, 78, 0.22);
+  background: rgba(255, 235, 228, 0.82);
+  color: var(--danger);
+}
+
+.oracle-overlay {
+  background: rgba(113, 80, 37, 0.22);
+  backdrop-filter: blur(14px);
+}
+
+.oracle-modal {
+  border-color: rgba(199, 151, 72, 0.32);
+  background:
+    radial-gradient(circle at top right, rgba(255, 216, 135, 0.42), transparent 30%),
+    linear-gradient(180deg, rgba(255, 255, 252, 0.98), rgba(255, 244, 220, 0.98));
+  box-shadow:
+    0 28px 90px rgba(137, 93, 32, 0.3),
+    inset 0 1px 0 rgba(255, 255, 255, 0.9);
+}
+
+.oracle-badge,
+.oracle-kicker {
+  color: #bd8731;
+}
+
+.oracle-close,
+.oracle-stat {
+  border-color: rgba(183, 136, 60, 0.2);
+  background: rgba(255, 250, 239, 0.82);
+  color: #704d22;
+}
+
+.oracle-portal h2,
+.oracle-stat strong {
+  color: #68471e;
+}
+
+.oracle-copy {
+  color: rgba(91, 67, 38, 0.86);
+}
+
+.oracle-stat span,
+.oracle-footnote {
+  color: rgba(91, 67, 38, 0.58);
+}
+
+@media (max-width: 420px) {
+  .app-shell {
+    gap: 8px;
+  }
+
+  .deity-hero {
+    grid-template-columns: 78px 1fr;
+    min-height: 92px;
+    padding: 7px 10px 8px 5px;
+    border-radius: 25px;
+  }
+
+  .deity-avatar {
+    width: 78px;
+    height: 95px;
+  }
+
+  .deity-copy {
+    padding-right: 34px;
+  }
+
+  .deity-copy p {
+    font-size: 13px;
+  }
+
+  .deity-hero::before {
+    width: 38px;
+    height: 38px;
+    right: 10px;
+    bottom: 10px;
+  }
+}
+
 * {
   box-sizing: border-box;
 }
@@ -702,5 +1098,568 @@ button {
   .feed-shell,
   .story-feed {
     gap: 7px;
+  }
+}
+
+/* Final theme override: warm hand-drawn deity app. */
+body {
+  color: var(--text);
+  background:
+    radial-gradient(circle at 50% 2%, rgba(255, 225, 153, 0.76), transparent 24%),
+    radial-gradient(circle at 12% 18%, rgba(255, 244, 213, 0.92), transparent 26%),
+    radial-gradient(circle at 92% 22%, rgba(255, 207, 126, 0.34), transparent 24%),
+    linear-gradient(180deg, #fffaf0 0%, #f8ecd4 58%, #f2dfbd 100%);
+}
+
+.app-shell {
+  gap: 9px;
+  border: 1px solid rgba(198, 151, 76, 0.28);
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.82), rgba(255, 249, 235, 0.88)),
+    var(--surface);
+  box-shadow:
+    0 26px 70px rgba(157, 113, 47, 0.24),
+    inset 0 1px 0 rgba(255, 255, 255, 0.92);
+}
+
+.topbar {
+  align-items: center;
+}
+
+.eyebrow {
+  color: rgba(145, 106, 48, 0.72);
+  font-weight: 800;
+}
+
+.topbar h1 {
+  color: #6f4c20;
+  font-size: 29px;
+  text-shadow: 0 2px 0 rgba(255, 255, 255, 0.8);
+}
+
+.status-pill {
+  border-color: rgba(199, 151, 72, 0.28);
+  background: rgba(255, 248, 231, 0.88);
+  color: #966a2f;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.86);
+}
+
+.status-pill.is-loading {
+  color: #8a5d1f;
+  border-color: rgba(207, 156, 62, 0.34);
+  background: linear-gradient(135deg, #fff1c7 0%, #f4cb73 100%);
+}
+
+.deity-hero {
+  position: relative;
+  display: grid;
+  grid-template-columns: 94px 1fr;
+  align-items: center;
+  min-height: 112px;
+  padding: 9px 13px 10px 7px;
+  border: 1px solid rgba(203, 158, 82, 0.22);
+  border-radius: 30px;
+  background:
+    radial-gradient(circle at 19% 34%, rgba(255, 222, 151, 0.44), transparent 32%),
+    linear-gradient(135deg, rgba(255, 255, 255, 0.96), rgba(255, 242, 214, 0.86));
+  box-shadow: var(--paper-shadow);
+  overflow: hidden;
+}
+
+.deity-hero::before {
+  position: absolute;
+  inset: auto 16px 12px auto;
+  width: 46px;
+  height: 46px;
+  border-radius: 999px;
+  background:
+    radial-gradient(circle, #fff8d7 0 16%, #f3bf54 36%, rgba(243, 191, 84, 0.1) 68%, transparent 70%);
+  box-shadow:
+    0 0 20px rgba(238, 177, 67, 0.42),
+    inset 0 0 10px rgba(255, 255, 255, 0.72);
+  content: "";
+}
+
+.deity-aura {
+  position: absolute;
+  width: 122px;
+  height: 122px;
+  left: -4px;
+  top: 0;
+  border-radius: 999px;
+  background: radial-gradient(circle, rgba(255, 220, 143, 0.44), transparent 66%);
+}
+
+.deity-avatar {
+  position: relative;
+  z-index: 1;
+  width: 92px;
+  height: 112px;
+  object-fit: contain;
+  filter: drop-shadow(0 8px 12px rgba(169, 119, 43, 0.18));
+  animation: deity-float 4s ease-in-out infinite;
+}
+
+.deity-copy {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  gap: 5px;
+  padding-right: 42px;
+}
+
+.deity-copy span {
+  color: #bd8731;
+  font-size: 11px;
+  font-weight: 900;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+.deity-copy p {
+  margin: 0;
+  color: #6c4b22;
+  font-size: 15px;
+  font-weight: 800;
+  line-height: 1.48;
+}
+
+.profile-chip,
+.story-card,
+.current-task,
+.settlement-card,
+.system-note,
+.composer {
+  border-color: rgba(183, 136, 60, 0.22);
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.88), rgba(255, 248, 233, 0.84)),
+    var(--surface);
+  box-shadow: var(--paper-shadow);
+}
+
+.profile-name,
+.profile-level {
+  color: #744f20;
+}
+
+.stat-chip {
+  border-color: rgba(187, 141, 65, 0.22);
+  background: rgba(255, 246, 225, 0.88);
+  color: #704d22;
+}
+
+.stat-chip strong,
+.bubble-label,
+.card-kicker,
+.task-kicker {
+  color: #bd8731;
+}
+
+.feed-meta {
+  color: rgba(113, 77, 31, 0.62);
+  font-weight: 800;
+}
+
+.bubble {
+  border-color: rgba(185, 139, 66, 0.2);
+  box-shadow: 0 9px 22px rgba(170, 121, 47, 0.1);
+}
+
+.bubble-user {
+  background: linear-gradient(135deg, rgba(255, 225, 158, 0.76), rgba(246, 201, 113, 0.72));
+  color: #563817;
+}
+
+.bubble-god {
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.94), rgba(255, 247, 231, 0.92));
+  color: #654720;
+}
+
+.bubble-title,
+.card-title,
+.current-task h3 {
+  color: #69491f;
+}
+
+.bubble-text,
+.card-text,
+.current-task p,
+.system-note p,
+.step-list {
+  color: rgba(91, 67, 38, 0.86);
+}
+
+.story-card {
+  background:
+    radial-gradient(circle at top left, rgba(255, 224, 156, 0.34), transparent 36%),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.94), rgba(255, 248, 235, 0.92));
+}
+
+.chip-button,
+.decision-pill {
+  border-color: rgba(180, 130, 52, 0.24);
+  background: rgba(255, 249, 236, 0.9);
+  color: #765122;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.82);
+}
+
+.chip-button:not(.is-ghost),
+.decision-pill.is-active,
+.submit-button,
+.oracle-primary {
+  background: linear-gradient(135deg, #ffe7a6 0%, #f2c466 48%, #d99d3c 100%);
+  color: #5a3810;
+  border-color: rgba(172, 117, 35, 0.28);
+  box-shadow:
+    0 8px 18px rgba(196, 139, 42, 0.22),
+    inset 0 1px 0 rgba(255, 255, 255, 0.72);
+}
+
+.chip-button.is-ghost,
+.decision-pill {
+  color: rgba(91, 67, 38, 0.66);
+}
+
+.composer {
+  background: rgba(255, 253, 248, 0.92);
+}
+
+.composer textarea {
+  color: #5b4326;
+}
+
+.composer textarea::placeholder {
+  color: rgba(104, 76, 38, 0.42);
+}
+
+.composer-hint {
+  color: rgba(103, 76, 39, 0.6);
+  font-weight: 700;
+}
+
+.error-banner {
+  border-color: rgba(190, 96, 78, 0.22);
+  background: rgba(255, 235, 228, 0.82);
+  color: var(--danger);
+}
+
+.oracle-overlay {
+  background: rgba(113, 80, 37, 0.22);
+}
+
+.oracle-modal {
+  border-color: rgba(199, 151, 72, 0.32);
+  background:
+    radial-gradient(circle at top right, rgba(255, 216, 135, 0.42), transparent 30%),
+    linear-gradient(180deg, rgba(255, 255, 252, 0.98), rgba(255, 244, 220, 0.98));
+  box-shadow:
+    0 28px 90px rgba(137, 93, 32, 0.3),
+    inset 0 1px 0 rgba(255, 255, 255, 0.9);
+}
+
+.oracle-badge,
+.oracle-kicker {
+  color: #bd8731;
+}
+
+.oracle-close,
+.oracle-stat {
+  border-color: rgba(183, 136, 60, 0.2);
+  background: rgba(255, 250, 239, 0.82);
+  color: #704d22;
+}
+
+.oracle-portal h2,
+.oracle-stat strong {
+  color: #68471e;
+}
+
+.oracle-copy {
+  color: rgba(91, 67, 38, 0.86);
+}
+
+.oracle-stat span,
+.oracle-footnote {
+  color: rgba(91, 67, 38, 0.58);
+}
+
+@media (max-width: 420px) {
+  .app-shell {
+    gap: 8px;
+  }
+
+  .deity-hero {
+    grid-template-columns: 78px 1fr;
+    min-height: 92px;
+    padding: 7px 10px 8px 5px;
+    border-radius: 25px;
+  }
+
+  .deity-avatar {
+    width: 78px;
+    height: 95px;
+  }
+
+  .deity-copy {
+    padding-right: 34px;
+  }
+
+  .deity-copy p {
+    font-size: 13px;
+  }
+
+  .deity-hero::before {
+    width: 38px;
+    height: 38px;
+    right: 10px;
+    bottom: 10px;
+  }
+}
+
+/* Reference-image layout: centered deity first, plain-text dialogue. */
+.app-shell {
+  gap: 8px;
+  padding: 14px 16px 12px;
+}
+
+.topbar {
+  flex: 0 0 auto;
+}
+
+.deity-hero {
+  display: grid;
+  grid-template-columns: 1fr;
+  justify-items: center;
+  flex: 0 0 auto;
+  min-height: 0;
+  padding: 0 0 2px;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+  overflow: visible;
+}
+
+.deity-hero::before {
+  width: 52px;
+  height: 52px;
+  right: calc(50% - 86px);
+  bottom: 48px;
+  opacity: 0.72;
+}
+
+.deity-aura {
+  width: 176px;
+  height: 176px;
+  left: 50%;
+  top: -2px;
+  transform: translateX(-50%);
+  background: radial-gradient(circle, rgba(255, 226, 157, 0.5), rgba(255, 236, 190, 0.16) 48%, transparent 70%);
+}
+
+.deity-avatar {
+  width: 118px;
+  height: 166px;
+  object-fit: contain;
+  filter:
+    drop-shadow(0 10px 12px rgba(166, 119, 43, 0.14))
+    drop-shadow(0 0 18px rgba(255, 214, 130, 0.34));
+}
+
+.deity-copy {
+  margin-top: -3px;
+  padding: 0 22px;
+  text-align: center;
+}
+
+.deity-copy p {
+  font-size: 13px;
+  font-weight: 900;
+  line-height: 1.35;
+}
+
+.profile-chip {
+  flex: 0 0 auto;
+  padding: 9px 10px;
+  border-radius: 22px;
+}
+
+.profile-stats {
+  gap: 6px;
+}
+
+.stat-chip {
+  padding: 5px 8px;
+}
+
+.feed-shell {
+  flex: 1 1 auto;
+  gap: 5px;
+  min-height: 0;
+}
+
+.feed-meta {
+  padding: 0 2px;
+}
+
+.story-feed {
+  gap: 10px;
+}
+
+.bubble {
+  width: auto;
+  max-width: 92%;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+}
+
+.bubble-user {
+  margin-left: auto;
+  padding-left: 40px;
+  background: transparent;
+  color: #6c4215;
+  text-align: right;
+}
+
+.bubble-god {
+  margin-right: auto;
+  padding-right: 38px;
+  background: transparent;
+  color: #654720;
+}
+
+.bubble-label {
+  margin-bottom: 3px;
+  font-size: 10px;
+}
+
+.bubble-title {
+  display: none;
+}
+
+.sin-name-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  width: fit-content;
+  max-width: 100%;
+  margin: 0 0 7px;
+  padding: 7px 10px;
+  border: 1px solid rgba(197, 141, 42, 0.28);
+  border-radius: 999px;
+  background:
+    linear-gradient(135deg, rgba(255, 238, 188, 0.96), rgba(242, 195, 93, 0.8));
+  color: #70440f;
+  font-size: 13px;
+  font-weight: 900;
+  line-height: 1.25;
+  box-shadow:
+    0 8px 18px rgba(202, 151, 57, 0.18),
+    inset 0 1px 0 rgba(255, 255, 255, 0.78);
+}
+
+.sin-name-badge span {
+  color: rgba(112, 68, 15, 0.64);
+  font-size: 10px;
+  letter-spacing: 0.12em;
+}
+
+.bubble-text {
+  font-size: 15px;
+  font-weight: 800;
+  line-height: 1.7;
+  white-space: pre-line;
+  text-shadow: 0 1px 0 rgba(255, 255, 255, 0.74);
+}
+
+.story-item.is-age-1 {
+  opacity: 0.72;
+}
+
+.story-item.is-age-2 {
+  opacity: 0.5;
+}
+
+.story-item.is-age-3,
+.story-item.is-age-4plus {
+  opacity: 0.28;
+}
+
+@media (max-width: 420px) {
+  .app-shell {
+    padding: 12px 14px 10px;
+  }
+
+  .deity-hero {
+    min-height: 0;
+  }
+
+  .deity-avatar {
+    width: 108px;
+    height: 152px;
+  }
+
+  .deity-aura {
+    width: 158px;
+    height: 158px;
+  }
+
+  .deity-hero::before {
+    width: 44px;
+    height: 44px;
+    right: calc(50% - 78px);
+    bottom: 42px;
+  }
+}
+
+@media (max-height: 760px) {
+  .app-shell {
+    gap: 6px;
+  }
+
+  .deity-avatar {
+    width: 106px;
+    height: 148px;
+  }
+
+  .deity-aura {
+    width: 148px;
+    height: 148px;
+  }
+
+  .deity-copy {
+    margin-top: -2px;
+  }
+
+  .deity-copy p {
+    font-size: 12px;
+  }
+
+  .profile-chip {
+    padding: 8px 10px;
+    gap: 6px;
+  }
+
+  .stat-chip {
+    padding: 4px 8px;
+  }
+
+  .profile-meta {
+    font-size: 11px;
+  }
+
+  .composer {
+    padding: 8px 10px;
+  }
+
+  .composer textarea {
+    min-height: 36px;
+  }
+
+  .composer-hint {
+    font-size: 11px;
   }
 }
