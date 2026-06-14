@@ -38,10 +38,11 @@ function renderStepList(steps) {
 
 function renderTimelineItem(item) {
   const visibleClass = item.visible ? "is-visible" : "is-entering";
+  const streamingClass = item.meta?.streaming ? "is-streaming" : "";
 
   if (item.kind === "user") {
     return `
-      <article class="story-item bubble bubble-user ${visibleClass}" data-id="${escapeHtml(item.id)}">
+      <article class="story-item bubble bubble-user ${visibleClass} ${streamingClass}" data-id="${escapeHtml(item.id)}">
         <p class="bubble-label">你</p>
         <p class="bubble-text">${escapeHtml(item.text)}</p>
       </article>
@@ -50,7 +51,7 @@ function renderTimelineItem(item) {
 
   if (item.kind === "god") {
     return `
-      <article class="story-item bubble bubble-god ${visibleClass}" data-id="${escapeHtml(item.id)}">
+      <article class="story-item bubble bubble-god ${visibleClass} ${streamingClass}" data-id="${escapeHtml(item.id)}">
         ${item.tone ? `<p class="bubble-label">${escapeHtml(item.tone)}</p>` : ""}
         ${item.title ? `<h3 class="bubble-title">${escapeHtml(item.title)}</h3>` : ""}
         <p class="bubble-text">${escapeHtml(item.text)}</p>
@@ -60,7 +61,7 @@ function renderTimelineItem(item) {
 
   if (item.kind === "card") {
     return `
-      <article class="story-item story-card ${visibleClass}" data-id="${escapeHtml(item.id)}">
+      <article class="story-item story-card ${visibleClass} ${streamingClass}" data-id="${escapeHtml(item.id)}">
         ${item.tone ? `<p class="card-kicker">${escapeHtml(item.tone)}</p>` : ""}
         ${item.title ? `<h3 class="card-title">${escapeHtml(item.title)}</h3>` : ""}
         ${item.text ? `<p class="card-text">${escapeHtml(item.text)}</p>` : ""}
@@ -71,7 +72,7 @@ function renderTimelineItem(item) {
   }
 
   return `
-    <article class="story-item system-note ${visibleClass}" data-id="${escapeHtml(item.id)}">
+    <article class="story-item system-note ${visibleClass} ${streamingClass}" data-id="${escapeHtml(item.id)}">
       <p>${escapeHtml(item.text)}</p>
     </article>
   `;

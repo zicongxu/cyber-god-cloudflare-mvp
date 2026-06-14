@@ -58,6 +58,75 @@ async function requestGet(apiBase, path, options = {}) {
   return payload.data;
 }
 
+async function requestStream(apiBase, path, options = {}) {
+  const response = await fetch(`${normalizeApiBase(apiBase)}${path}`, {
+    method: options.method || "POST",
+    headers: {
+      "content-type": "application/json",
+      "x-user-id": options.userId || "demo_user",
+      ...(options.headers || {}),
+    },
+    body: options.body ? JSON.stringify(options.body) : undefined,
+  });
+
+  if (!response.ok || !response.body) {
+    const text = await response.text().catch(() => "");
+    const error = new Error(text || `HTTP ${response.status}`);
+    error.code = response.status;
+    error.data = text;
+    throw error;
+  }
+
+  const reader = response.body.getReader();
+  const decoder = new TextDecoder();
+  let buffer = "";
+  let result = "";
+
+  while (true) {
+    const { value, done } = await reader.read();
+    if (value) {
+      buffer += decoder.decode(value, { stream: !done });
+      const lines = buffer.split(/\r?\n/);
+      buffer = lines.pop() || "";
+
+      for (const line of lines) {
+        const trimmed = line.trim();
+        if (!trimmed || !trimmed.startsWith("data:")) {
+          continue;
+        }
+
+        const raw = trimmed.slice(5).trim();
+        if (!raw || raw === "[DONE]") {
+          continue;
+        }
+
+        let parsed;
+        try {
+          parsed = JSON.parse(raw);
+        } catch {
+          continue;
+        }
+
+        const delta = parsed?.choices?.[0]?.delta || {};
+        const content = typeof delta.content === "string" ? delta.content : "";
+        if (content) {
+          result += content;
+        }
+
+        if (typeof options.onChunk === "function") {
+          options.onChunk({ delta, parsed, text: result });
+        }
+      }
+    }
+
+    if (done) {
+      break;
+    }
+  }
+
+  return result;
+}
+
 export function createApiClient(apiBase) {
   return {
     createConfessionFlow(payload) {
@@ -81,6 +150,11 @@ export function createApiClient(apiBase) {
     getProfile() {
       return requestGet(apiBase, "/api/v1/users/me/profile");
     },
+    streamAgentChat(payload, options = {}) {
+      return requestStream(apiBase, "/api/v1/agent/chat-stream", {
+        body: payload,
+        onChunk: options.onChunk,
+      });
+    },
   };
 }
-

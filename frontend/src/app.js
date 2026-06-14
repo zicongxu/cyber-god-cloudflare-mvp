@@ -3,6 +3,8 @@ import { createInitialState, loadState, normalizeState, randomId, saveState } fr
 import { renderApp } from "./render.js";
 
 const MAX_TIMELINE = 5;
+const DEFAULT_API_BASE = "https://cyber-god-api.hi542994938.workers.dev";
+const LEGACY_LOCAL_API_BASE = "http://localhost:8787";
 
 function resolveApiBase() {
   const url = new URL(window.location.href);
@@ -14,10 +16,16 @@ function resolveApiBase() {
 
   const fromStorage = window.localStorage.getItem("godchat.apiBase");
   if (fromStorage) {
+    if (fromStorage.replace(/\/$/, "") === LEGACY_LOCAL_API_BASE) {
+      window.localStorage.setItem("godchat.apiBase", DEFAULT_API_BASE);
+      return DEFAULT_API_BASE;
+    }
+
     return fromStorage.replace(/\/$/, "");
   }
 
-  return window.location.port === "4173" || window.location.protocol === "file:" ? "http://localhost:8787" : window.location.origin;
+  window.localStorage.setItem("godchat.apiBase", DEFAULT_API_BASE);
+  return DEFAULT_API_BASE;
 }
 
 function createMessage(partial) {
@@ -105,6 +113,90 @@ export function createApp(root) {
         timeline: current.timeline.map((entry) => (ids.includes(entry.id) ? { ...entry, visible: true } : entry)),
       }));
     }, 24);
+  }
+
+  function updateTimelineEntry(entryId, patch) {
+    setState((current) => ({
+      ...current,
+      timeline: current.timeline.map((entry) => (entry.id === entryId ? { ...entry, ...patch } : entry)),
+    }));
+  }
+
+  function appendTimelineEntry(entry) {
+    const next = createMessage(entry);
+    setState((current) => ({
+      ...current,
+      timeline: [...current.timeline, next].slice(-MAX_TIMELINE),
+    }));
+    revealTimeline([next.id]);
+    return next;
+  }
+
+  function buildStreamMessages(userText, flowData = {}) {
+    const promptParts = [
+      "你是赛博上帝，幽默、毒舌，但只审判行为，不羞辱人格。",
+      "你正在和用户进行一段单页原型里的聊天回复。",
+      "要求：只输出中文，保持简短、锋利、带一点戏谑。",
+      "如果有任务或审判结果，优先围绕行为和下一步行动回应，不要长篇大论。",
+    ];
+
+    if (flowData.judgement?.sin_name || flowData.judgement?.sentence) {
+      promptParts.push(
+        `当前审判：${flowData.judgement.sin_name || "未命名罪行"}。判词：${flowData.judgement.sentence || "无"}`,
+      );
+    }
+
+    if (flowData.task?.title) {
+      promptParts.push(`当前任务：${flowData.task.title}`);
+    }
+
+    return [
+      { role: "system", content: promptParts.join("\n") },
+      { role: "user", content: userText },
+    ];
+  }
+
+  async function streamGodReply(userText, flowData) {
+    const streamId = randomId("god");
+    appendTimelineEntry({
+      id: streamId,
+      kind: "god",
+      tone: "神明回应",
+      title: "赛博上帝",
+      text: "……",
+      meta: { streaming: true },
+    });
+
+    let text = "";
+    try {
+      await api.streamAgentChat(
+        {
+          messages: buildStreamMessages(userText, flowData),
+        },
+        {
+          onChunk({ text: nextText }) {
+            text = nextText;
+            updateTimelineEntry(streamId, {
+              text: text || "……",
+              meta: { streaming: true },
+            });
+          },
+        },
+      );
+
+      updateTimelineEntry(streamId, {
+        text: text || "……",
+        meta: { streaming: false },
+      });
+      return text;
+    } catch (error) {
+      updateTimelineEntry(streamId, {
+        title: "神明开小差了",
+        text: error.message || "这位神今天网络不太稳。",
+        meta: { streaming: false },
+      });
+      throw error;
+    }
   }
 
   async function bootstrap() {
@@ -262,6 +354,7 @@ export function createApp(root) {
       flowId: state.flowId,
       taskId: state.taskId,
       confession: { content: trimmed },
+      loading: true,
     });
 
     try {
@@ -269,34 +362,13 @@ export function createApp(root) {
         content: trimmed,
         roast_level: 3,
       });
-      const profile = await api.getProfile();
       const confession = { content: trimmed, behavior_type: response.diagnosis?.behavior_type || "" };
-      const items = [
-        {
-          kind: "god",
-          tone: "神明判词",
-          title: response.judgement?.sin_name || "审判已下",
-          text: `${response.judgement?.rap_intro || ""} ${response.judgement?.sentence || ""}`.trim(),
-        },
-        {
-          kind: "card",
-          tone: "救赎任务",
-          title: response.task?.title || "当前任务",
-          text: "先把这一步做完，别急着跟命运辩论。",
-          detail: response.task?.steps || [],
-        },
-      ];
-      const timeline = [
-        createMessage({ kind: "user", text: trimmed }),
-        ...items.map((item) => createMessage(item)),
-      ].slice(-MAX_TIMELINE);
 
       setState((current) => ({
         ...current,
         flowId: response.flow_id,
         taskId: response.task?.task_id || null,
         status: response.status,
-        profile,
         confession,
         judgement: response.judgement || null,
         task: response.task || null,
@@ -304,12 +376,38 @@ export function createApp(root) {
         settlement: null,
         oracle: null,
         ritualChoice: "completed",
-        timeline,
-        loading: false,
+        loading: true,
         error: null,
         lastSyncedAt: new Date().toISOString(),
       }));
-      revealTimeline(timeline.map((entry) => entry.id));
+
+      try {
+        await streamGodReply(trimmed, {
+          judgement: response.judgement,
+          task: response.task,
+        });
+      } catch {
+        // Streaming 是增强体验，不应阻断主流程。
+      }
+
+      const taskCard = createMessage({
+        kind: "card",
+        tone: "救赎任务",
+        title: response.task?.title || "当前任务",
+        text: "先把这一步做完，别急着跟命运辩论。",
+        detail: response.task?.steps || [],
+      });
+      setState((current) => ({
+        ...current,
+        timeline: [...current.timeline, taskCard].slice(-MAX_TIMELINE),
+        loading: false,
+      }));
+      revealTimeline([taskCard.id]);
+
+      api
+        .getProfile()
+        .then((profile) => patch({ profile, lastSyncedAt: new Date().toISOString() }))
+        .catch(() => {});
     } catch (error) {
       patch({
         loading: false,

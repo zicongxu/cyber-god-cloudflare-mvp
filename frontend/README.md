@@ -13,7 +13,7 @@ GodChat 首版前端原型，采用原生 HTML/CSS/JavaScript 的轻量模块化
 
 ## 运行方式
 
-默认后端地址为 `http://localhost:8787`。
+默认后端地址为 `https://cyber-god-api.hi542994938.workers.dev`。
 
 本地可以直接起静态服务器：
 
