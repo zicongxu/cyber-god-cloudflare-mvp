@@ -366,6 +366,9 @@ async function settleTask(request: Request, env: Env, taskId: string): Promise<R
     env,
     behaviorType: confession?.behavior_type ?? "generic",
     taskTitle: task.title,
+    reward,
+    before,
+    after,
     levelUp,
   });
   const oracleText = settlementCopy.oracle_text;
