@@ -26,6 +26,8 @@ f087c9ce-3b04-4fe1-8026-d3d051c382b9
 ```bash
 cd backend
 npm install
+cp .dev.vars.example .dev.vars
+# 编辑 .dev.vars，填入 STEPFUN_API_KEY
 npm run db:migrate:local
 npm run dev
 ```
@@ -37,6 +39,15 @@ http://localhost:8787
 ```
 
 ## 远端发布
+
+首次配置 StepFun API Key：
+
+```bash
+cd backend
+npx wrangler secret put STEPFUN_API_KEY
+```
+
+发布：
 
 ```bash
 cd backend
