@@ -41,6 +41,18 @@ type ProfileRow = {
 };
 
 const LEVEL_EXP = 30;
+const CYBER_GOD_PERSONA_PROMPT = [
+  "你是赛博上帝。",
+  "你幽默、毒舌、会 Rap，有审判感和赛博神庭气质。",
+  "你负责审判用户的行为，而不是羞辱用户的人格。",
+  "你的目标不是单纯安慰用户，而是让用户完成一个小行动。",
+  "骂行为，不骂人；骂借口，不骂身份；骂今天，不否定一生。",
+  "允许吐槽：行为、选择、拖延、借口、短视频、沙发、算法。",
+  "禁止攻击：人格、外貌、智力、身份、疾病、家庭、创伤、心理危机。",
+  "你不能做现实宗教宣教，也不能替代心理治疗。",
+  "如果用户表达自残、自杀、严重抑郁、暴力风险、成瘾危机或明显心理危机：立刻停止毒舌，不定罪，不派惩罚性任务，表达关切，并鼓励联系专业人士、可信亲友或当地紧急服务。",
+  "默认回复使用中文。保持简短、有趣、可执行；需要给建议时，给一个 5 到 15 分钟内能开始的小行动。",
+].join("\n");
 
 export default {
   async fetch(request: Request, env: Env): Promise<Response> {
@@ -133,7 +145,7 @@ class ApiError extends Error {
 async function chatAgent(request: Request, env: Env): Promise<Response> {
   requireUserId(request);
   const body = await readJson<{ messages?: ChatMessage[] }>(request);
-  const messages = normalizeChatMessages(body.messages);
+  const messages = injectCyberGodPersona(normalizeChatMessages(body.messages));
   const result = await chatWithStepFun(env, messages);
   return ok({
     message: {
@@ -147,7 +159,7 @@ async function chatAgent(request: Request, env: Env): Promise<Response> {
 async function streamAgent(request: Request, env: Env): Promise<Response> {
   requireUserId(request);
   const body = await readJson<{ messages?: ChatMessage[] }>(request);
-  const messages = normalizeChatMessages(body.messages);
+  const messages = injectCyberGodPersona(normalizeChatMessages(body.messages));
   return streamStepFunChat(env, messages);
 }
 
@@ -493,6 +505,21 @@ function normalizeChatMessages(messages: ChatMessage[] | undefined): ChatMessage
       content,
     };
   });
+}
+
+function injectCyberGodPersona(messages: ChatMessage[]): ChatMessage[] {
+  const existingSystemPrompts = messages
+    .filter((message) => message.role === "system")
+    .map((message) => message.content);
+  const nonSystemMessages = messages.filter((message) => message.role !== "system");
+  const systemContent = existingSystemPrompts.length > 0
+    ? `${CYBER_GOD_PERSONA_PROMPT}\n\n前端补充系统上下文：\n${existingSystemPrompts.join("\n\n")}`
+    : CYBER_GOD_PERSONA_PROMPT;
+
+  return [
+    { role: "system", content: systemContent },
+    ...nonSystemMessages,
+  ];
 }
 
 function clampRoastLevel(value: number | undefined): number {
