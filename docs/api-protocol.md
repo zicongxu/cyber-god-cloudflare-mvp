@@ -17,7 +17,7 @@
 | StepFun Base URL | 旧配置示例可能使用 `/step_plan/v1` | 代码默认 `https://api.stepfun.com/v1` | 已补充说明 |
 | 普通/流式聊天人格 | 原文档说前端需要自己传赛博上帝 system prompt | 当前后端会自动注入“心灵导师形态”人格 prompt，并合并前端 system | 已修正 |
 | 普通/流式聊天定位 | 原文档示例偏“审判/任务” | 当前注入人格明确禁止审判、定罪、惩罚、任务派发 | 已修正为“心灵导师聊天” |
-| 创建忏悔流 | 原文档说 StepFun 生成审判和任务 | 当前 StepFun 只生成审判文案；任务仍由本地模板库生成 | 已修正 |
+| 创建忏悔流 | 原文档说 StepFun 串行生成审判和任务 | 当前 StepFun 并发生成审判文案和任务文案；奖励仍由本地模板决定 | 已修正 |
 | 降级任务状态 | 原文档写返回 `waiting_completion` | 当前代码返回 `downgraded_task_assigned`，但新任务自身状态是 `waiting_completion` | 已按实现补充，并标注流程注意点 |
 | 神谕获取 | 原文档有结算示例，但不够明确 | 神谕只在 `/settle` 返回；升级才解锁 | 已补充 |
 | 错误信息 | 原文档错误码较粗 | 真实错误 message 更具体，如 `content is required`、`messages is required` | 已补充常见错误 |
@@ -369,13 +369,15 @@ POST /api/v1/confession-flows
 
 ### 当前真实生成逻辑
 
-当前实现不是全部交给 LLM：
+当前实现不是全部交给 LLM，且审判和任务两路 StepFun 调用已并发：
 
 ```text
 用户忏悔
 → 关键词诊断 behavior_type
-→ StepFun 只生成审判文案：rap_intro / sin_name / sentence
-→ 本地模板库生成任务 task
+→ 并发调用 StepFun：
+   1. 生成审判文案：rap_intro / sin_name / sentence
+   2. 生成救赎任务：title / steps / duration_minutes / psychology
+→ 本地模板库决定 reward 奖励数值
 → 保存 DB
 → 返回 waiting_completion
 ```
@@ -383,8 +385,9 @@ POST /api/v1/confession-flows
 也就是说：
 
 - StepFun 负责“怎么骂得好玩”；
-- 本地模板负责“任务是什么、奖励是什么”；
-- 任务和奖励更稳定，不完全由模型随机生成。
+- StepFun 也负责“任务怎么设计得更贴合用户忏悔”；
+- 任务生成不再依赖 judgement 结果，只依赖 `content + diagnosis`，因此可以和审判并发；
+- 本地模板仍负责奖励数值，避免模型影响结算和升级。
 
 ### 请求
 
@@ -466,9 +469,9 @@ POST /api/v1/confession-flows
 ### StepFun / 模板兜底说明
 
 - 如果没有配置 `STEPFUN_API_KEY`，审判文案和任务都来自本地模板；
-- 如果配置了 `STEPFUN_API_KEY`，审判文案来自 StepFun；
+- 如果配置了 `STEPFUN_API_KEY`，审判文案和任务文案都来自 StepFun；
 - 当前代码里，配置了 Key 但 StepFun 调用失败时，会返回错误，不会自动降级成模板；
-- 任务始终来自模板库。
+- 任务的 `reward` 始终来自模板库。
 
 ### 前端使用说明
 
