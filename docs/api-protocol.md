@@ -250,9 +250,9 @@ POST /api/v1/confession-flows
 
 说明：
 
-- 后端优先调用 StepFun 生成审判和任务；
-- 如果未配置 `STEPFUN_API_KEY` 或 StepFun 调用失败，后端会用模板兜底；
-- `agent.fallback=true` 表示本次 StepFun 调用失败后使用了模板兜底；
+- 后端调用 StepFun 生成审判和任务；
+- 线上配置 `STEPFUN_API_KEY` 后，StepFun 调用失败会直接返回错误，不再使用模板兜底；
+- 仅本地未配置 `STEPFUN_API_KEY` 时，后端才使用模板生成，方便离线开发；
 - 前端可以忽略 `agent` 字段，不影响主流程。
 
 ## 8. 查询流程详情

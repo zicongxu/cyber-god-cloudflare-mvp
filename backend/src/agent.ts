@@ -84,7 +84,7 @@ export async function createConfessionPlan(params: {
       agent_meta: agentMeta,
     };
   } catch (error) {
-    return withFallbackMeta(fallbackPlan, params.env, error);
+    throw new Error(error instanceof Error ? error.message : "StepFun request failed");
   }
 }
 
@@ -134,10 +134,7 @@ export async function createSettlementCopy(params: {
       agent_meta: stepfunMeta(params.env, false),
     };
   } catch (error) {
-    return {
-      ...fallback,
-      agent_meta: stepfunMeta(params.env, true, error),
-    };
+    throw new Error(error instanceof Error ? error.message : "StepFun request failed");
   }
 }
 
@@ -147,13 +144,6 @@ function createTemplatePlan(content: string, roastLevel: number, diagnosis: Beha
     judgement: judgementFor(diagnosis.behavior_type, roastLevel),
     task: taskFor(diagnosis.behavior_type),
     agent_meta: templateMeta(),
-  };
-}
-
-function withFallbackMeta(plan: ConfessionPlan, env: Env, error: unknown): ConfessionPlan {
-  return {
-    ...plan,
-    agent_meta: stepfunMeta(env, true, error),
   };
 }
 
