@@ -5,6 +5,13 @@ import { renderApp } from "./render.js";
 const DEFAULT_FLOW_API_BASE = "https://cyber-god-api.hi542994938.workers.dev";
 const DEFAULT_CHAT_API_BASE = "https://cyber-god-api.hi542994938.workers.dev";
 const LEGACY_LOCAL_API_BASE = "http://localhost:8787";
+const SPLASH_COPIES = [
+  "敢于直面当下的不足，便是救赎的第一步。",
+  "无论何种状态，我都愿意倾听你的心声。",
+  "我听着呢。",
+];
+const JUDGEMENT_TYPE_STEP_MS = 34;
+const JUDGEMENT_STAGE_DELAY_MS = 520;
 
 function readBase(key, fallback) {
   const url = new URL(window.location.href);
@@ -65,9 +72,16 @@ function formatJudgementText(judgement) {
   return [judgement.rap_intro, judgement.sentence].filter(Boolean).join("\n");
 }
 
+function wait(ms) {
+  return new Promise((resolve) => {
+    window.setTimeout(resolve, ms);
+  });
+}
+
 export function createApp(root) {
   const apiBases = resolveApiBases();
   const api = createApiClient(apiBases);
+  const splashCopy = SPLASH_COPIES[Math.floor(Math.random() * SPLASH_COPIES.length)];
   const savedState = loadState();
   let state = normalizeState({
     ...savedState,
@@ -81,6 +95,7 @@ export function createApp(root) {
     top: 0,
     atBottom: true,
   };
+  let endVideoOpen = false;
   let streamDomFrame = 0;
   const pendingStreamDomUpdates = new Map();
 
@@ -173,6 +188,17 @@ export function createApp(root) {
 
   function closeOracleModal() {
     patch({ oracleModalOpen: false });
+  }
+
+  function openEndVideo() {
+    endVideoOpen = true;
+    render();
+  }
+
+  function closeEndVideo() {
+    endVideoOpen = false;
+    render();
+    scrollFeedToLatest();
   }
 
   function enterCompletionConfirm() {
@@ -272,6 +298,34 @@ export function createApp(root) {
     if (!streamDomFrame) {
       streamDomFrame = window.requestAnimationFrame(flushStreamDomUpdates);
     }
+  }
+
+  async function typeTimelineEntry(entryId, fullText, options = {}) {
+    const chars = Array.from(fullText || "");
+    const stepMs = options.stepMs ?? JUDGEMENT_TYPE_STEP_MS;
+    const existing = state.timeline.find((entry) => entry.id === entryId);
+    const baseMeta = existing?.meta || {};
+    let currentText = "";
+
+    updateStreamingTimelineEntry(entryId, {
+      text: "",
+      meta: { ...baseMeta, streaming: true },
+    });
+
+    for (const char of chars) {
+      currentText += char;
+      updateStreamingTimelineEntry(entryId, {
+        text: currentText,
+        meta: { ...baseMeta, streaming: true },
+      });
+      await wait(char === "\n" || /[。！？.!?]/.test(char) ? stepMs * 5 : stepMs);
+    }
+
+    pendingStreamDomUpdates.delete(entryId);
+    updateTimelineEntry(entryId, {
+      text: fullText,
+      meta: { ...baseMeta, streaming: false },
+    });
   }
 
   function appendTimelineEntry(entry) {
@@ -538,10 +592,11 @@ export function createApp(root) {
             kind: "god",
             tone: "神明判词",
             title: response.judgement.sin_name || "审判已下",
-            text: formatJudgementText(response.judgement),
+            text: "",
             meta: { sinName: response.judgement.sin_name || "" },
           })
         : null;
+      const judgementText = formatJudgementText(response.judgement);
 
       setState((current) => ({
         ...current,
@@ -564,15 +619,9 @@ export function createApp(root) {
       }));
       if (judgementItem) {
         revealTimeline([judgementItem.id]);
-      }
-
-      try {
-        await streamGodReply(trimmed, {
-          judgement: response.judgement,
-          task: response.task,
-        });
-      } catch {
-        // Streaming 是增强体验，不应阻断主流程。
+        await wait(JUDGEMENT_STAGE_DELAY_MS);
+        await typeTimelineEntry(judgementItem.id, judgementText);
+        await wait(JUDGEMENT_STAGE_DELAY_MS);
       }
 
       const taskCard = createMessage({
@@ -782,7 +831,33 @@ export function createApp(root) {
   }
 
   function render() {
-    renderApp(root, state);
+    renderApp(root, { ...state, endVideoOpen });
+  }
+
+  function showSplash() {
+    const existingSplash = document.querySelector(".splash-screen");
+    if (existingSplash) {
+      existingSplash.remove();
+    }
+
+    const splash = document.createElement("section");
+    splash.className = "splash-screen";
+    splash.setAttribute("aria-label", "开屏引导");
+    splash.innerHTML = `
+      <div class="splash-aura" aria-hidden="true"></div>
+      <img class="splash-avatar" src="./assets/soft-god-splash.png" alt="张开双手的小神明" />
+      <p class="splash-copy">${splashCopy}</p>
+    `;
+    document.body.append(splash);
+
+    window.setTimeout(() => {
+      splash.classList.add("is-leaving");
+    }, 2200);
+
+    window.setTimeout(() => {
+      splash.remove();
+      scrollFeedToLatest();
+    }, 2800);
   }
 
   root.addEventListener("submit", async (event) => {
@@ -850,6 +925,16 @@ export function createApp(root) {
       closeOracleModal();
       return;
     }
+
+    if (action === "open-end-video") {
+      openEndVideo();
+      return;
+    }
+
+    if (action === "close-end-video") {
+      closeEndVideo();
+      return;
+    }
   });
 
   root.addEventListener("input", (event) => {
@@ -883,6 +968,11 @@ export function createApp(root) {
   );
 
   window.addEventListener("keydown", (event) => {
+    if (event.key === "Escape" && endVideoOpen) {
+      closeEndVideo();
+      return;
+    }
+
     if (event.key === "Escape" && state.oracleModalOpen) {
       closeOracleModal();
       return;
@@ -895,6 +985,7 @@ export function createApp(root) {
 
   bootstrap();
   restoreFeedScrollState();
+  showSplash();
 
   return {
     getState() {

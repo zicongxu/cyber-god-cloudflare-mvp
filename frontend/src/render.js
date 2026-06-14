@@ -236,10 +236,6 @@ function renderProfile(profile) {
         <span class="profile-level">Lv.${escapeHtml(profile.level ?? 0)} · ${escapeHtml(profile.exp ?? 0)}/${escapeHtml(profile.next_level_exp ?? 0)} XP</span>
       </div>
       <div class="profile-stats">${formatAttributes(profile)}</div>
-      <div class="profile-meta">
-        <span>完成 ${escapeHtml(profile.stats?.completed_tasks ?? 0)}</span>
-        <span>翻车 ${escapeHtml(profile.stats?.failed_tasks ?? 0)}</span>
-      </div>
     </section>
   `;
 }
@@ -258,19 +254,10 @@ function renderError(state) {
 }
 
 function renderDeityHero(state) {
-  const statusCopy = state.loading
-    ? "小神明正在翻阅你的因果账本。"
-    : state.status === "idle"
-      ? "说吧，今天又把哪件小事拖成史诗了？"
-      : "审判很温柔，但账还是要算清楚。";
-
   return `
     <section class="deity-hero">
       <div class="deity-aura" aria-hidden="true"></div>
       <img class="deity-avatar" src="./assets/soft-god-avatar.png" alt="闭眼漂浮的小神明" />
-      <div class="deity-copy">
-        <p>${escapeHtml(statusCopy)}</p>
-      </div>
     </section>
   `;
 }
@@ -318,6 +305,19 @@ function renderOracleModal(state) {
   `;
 }
 
+function renderEndVideoOverlay(state) {
+  if (!state.endVideoOpen) {
+    return "";
+  }
+
+  return `
+    <section class="end-video-overlay" aria-modal="true" role="dialog" aria-label="终章视频">
+      <button type="button" class="end-video-close" data-action="close-end-video" aria-label="关闭终章视频">×</button>
+      <video class="end-video" src="./assets/end.mp4" controls autoplay playsinline></video>
+    </section>
+  `;
+}
+
 function renderTimelineFeed(timeline) {
   return `
     ${timeline.map((item, index) => renderTimelineItem(item, timeline.length - 1 - index)).join("")}
@@ -339,6 +339,10 @@ function statusLabel(status) {
     restoring: "恢复中",
   };
 
+  if (status === "oracle_unlocked" || status === "reward_settled") {
+    return "";
+  }
+
   return map[status] || status || "未知";
 }
 
@@ -347,11 +351,17 @@ export function renderApp(root, state) {
     <main class="app-shell">
       <header class="topbar">
         <div>
-          <p class="eyebrow">移动端 App 风格</p>
           <h1>GodChat</h1>
         </div>
-        <div class="status-pill ${state.loading ? "is-loading" : ""}">
-          ${escapeHtml(state.loading ? "处理请求中" : statusLabel(state.status))}
+        <div class="topbar-actions">
+          ${
+            state.loading || statusLabel(state.status)
+              ? `<div class="status-pill ${state.loading ? "is-loading" : ""}">
+                  ${escapeHtml(state.loading ? "处理中" : statusLabel(state.status))}
+                </div>`
+              : ""
+          }
+          <button type="button" class="end-video-button" data-action="open-end-video">终章</button>
         </div>
       </header>
 
@@ -362,7 +372,6 @@ export function renderApp(root, state) {
       <section class="feed-shell">
         <div class="feed-meta">
           <span>最新对话</span>
-          <span>${escapeHtml(state.timeline.length)} 条关键剧情</span>
         </div>
         <div class="story-feed">
           ${renderTimelineFeed(state.timeline)}
@@ -371,6 +380,7 @@ export function renderApp(root, state) {
 
       ${renderComposer(state)}
       ${renderOracleModal(state)}
+      ${renderEndVideoOverlay(state)}
     </main>
   `;
 }
