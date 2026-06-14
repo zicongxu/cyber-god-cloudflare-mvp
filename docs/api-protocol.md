@@ -18,6 +18,13 @@ X-User-Id: user_123
 
 MVP 暂不做登录，前端用 `X-User-Id` 标识用户。没有该 Header 时，后端返回 `40101`。
 
+### 1.1 前端状态保存约定
+
+- 前端需要保存当前活跃的 `flow_id`，推荐使用 `localStorage` 或 `sessionStorage`。
+- 页面刷新后，前端应优先使用保存的 `flow_id` 调用 `GET /api/v1/confession-flows/{flow_id}` 恢复当前流程。
+- 如果本地没有可用的 `flow_id`，前端应回到初始忏悔态，而不是假设存在可恢复的流程。
+- 当前协议没有“查询当前活跃流程”的独立接口，首版按单流程恢复处理。
+
 统一成功响应：
 
 ```json
@@ -82,7 +89,7 @@ completion_ritual_started
 | 页面/动作 | 接口 |
 |---|---|
 | 用户提交忏悔 | `POST /api/v1/confession-flows` |
-| 页面刷新恢复 | `GET /api/v1/confession-flows/{flow_id}` |
+| 页面刷新恢复当前流程 | `GET /api/v1/confession-flows/{flow_id}` |
 | 点击请求神明见证 | `POST /api/v1/tasks/{task_id}/completion-ritual` |
 | 选择未完成 | `POST /api/v1/tasks/{task_id}/downgrade` |
 | 选择诚实完成并确认 | `POST /api/v1/tasks/{task_id}/self-confirm` |
@@ -154,6 +161,14 @@ POST /api/v1/confession-flows
 }
 ```
 
+前端使用说明：
+
+- `status` 用于驱动页面主状态切换。
+- `diagnosis` 用于展示问题识别结果。
+- `judgement` 用于展示审判文案。
+- `task` 用于展示首个弥补任务卡片。
+- 该接口不返回历史时间线，不承担档案页职责。
+
 ## 5. 查询流程详情
 
 ```http
@@ -200,6 +215,13 @@ GET /api/v1/confession-flows/{flow_id}
 }
 ```
 
+前端使用说明：
+
+- 该接口是页面刷新恢复的核心入口。
+- `status` 直接映射页面状态机。
+- `confession`、`judgement`、`task` 三块内容可直接重建当前聊天流。
+- 该接口不提供最近历史列表，只恢复当前流程。
+
 ## 6. 开启完成仪式
 
 ```http
@@ -241,6 +263,12 @@ POST /api/v1/tasks/{task_id}/completion-ritual
   }
 }
 ```
+
+前端使用说明：
+
+- `ritual.options` 直接映射为两个操作按钮。
+- `completion_ritual_started` 是一个独立页面态或对话态。
+- 用户选择 `completed` 或 `not_completed` 后，前端分别继续走 `self-confirm` 或 `downgrade`。
 
 ## 7. 未完成，生成 Tiny 任务
 
@@ -290,6 +318,12 @@ POST /api/v1/tasks/{task_id}/downgrade
 }
 ```
 
+前端使用说明：
+
+- `previous_task_id` 用于提示用户当前任务已降级。
+- `message` 用于展示系统的态度反馈。
+- `task` 直接替换当前任务卡片，不需要离开当前流程。
+
 ## 8. 自我确认完成
 
 ```http
@@ -330,6 +364,12 @@ POST /api/v1/tasks/{task_id}/self-confirm
 - MVP 只支持 `witness_type=text`；
 - `self_confirmation_text` 必填；
 - 见证材料只保存，不审核真假。
+
+前端使用说明：
+
+- `self_confirmation_text` 是首版必须填写的确认文案。
+- `witness` 首版只需要做成可选文本补充区。
+- 返回 `self_confirmed` 后，前端继续调用 `settle` 进入结算阶段。
 
 ## 9. 结算奖励
 
@@ -383,6 +423,13 @@ POST /api/v1/tasks/{task_id}/settle
 }
 ```
 
+前端使用说明：
+
+- `settlement.before` 和 `settlement.after` 用于展示等级和经验变化。
+- `oracle.unlocked` 为 `true` 时可以展示额外神谕卡片。
+- `god_reply` 适合放在结算后的剧情气泡里。
+- 该接口是任务闭环的最终展示点。
+
 重复调用响应：
 
 ```json
@@ -430,6 +477,13 @@ GET /api/v1/users/me/profile
   }
 }
 ```
+
+前端使用说明：
+
+- `attributes` 用于成长面板的四维属性展示。
+- `stats` 只提供完成数与失败数汇总。
+- 当前协议没有历史任务列表、时间线或最近 N 次忏悔记录接口，因此前端的“行为记录区”应按摘要卡设计，而不是完整档案列表。
+- 如果后续要做完整历史页，需要新增独立接口。
 
 ## 11. 错误码
 
