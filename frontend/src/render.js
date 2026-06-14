@@ -36,13 +36,34 @@ function renderStepList(steps) {
   `;
 }
 
-function renderTimelineItem(item) {
+function ageClass(age) {
+  if (age <= 0) {
+    return "is-age-0";
+  }
+
+  if (age === 1) {
+    return "is-age-1";
+  }
+
+  if (age === 2) {
+    return "is-age-2";
+  }
+
+  if (age === 3) {
+    return "is-age-3";
+  }
+
+  return "is-age-4plus";
+}
+
+function renderTimelineItem(item, age = 0) {
   const visibleClass = item.visible ? "is-visible" : "is-entering";
   const streamingClass = item.meta?.streaming ? "is-streaming" : "";
+  const historyClass = ageClass(age);
 
   if (item.kind === "user") {
     return `
-      <article class="story-item bubble bubble-user ${visibleClass} ${streamingClass}" data-id="${escapeHtml(item.id)}">
+      <article class="story-item bubble bubble-user ${visibleClass} ${streamingClass} ${historyClass}" data-id="${escapeHtml(item.id)}">
         <p class="bubble-label">你</p>
         <p class="bubble-text">${escapeHtml(item.text)}</p>
       </article>
@@ -51,7 +72,7 @@ function renderTimelineItem(item) {
 
   if (item.kind === "god") {
     return `
-      <article class="story-item bubble bubble-god ${visibleClass} ${streamingClass}" data-id="${escapeHtml(item.id)}">
+      <article class="story-item bubble bubble-god ${visibleClass} ${streamingClass} ${historyClass}" data-id="${escapeHtml(item.id)}">
         ${item.tone ? `<p class="bubble-label">${escapeHtml(item.tone)}</p>` : ""}
         ${item.title ? `<h3 class="bubble-title">${escapeHtml(item.title)}</h3>` : ""}
         <p class="bubble-text">${escapeHtml(item.text)}</p>
@@ -61,7 +82,7 @@ function renderTimelineItem(item) {
 
   if (item.kind === "card") {
     return `
-      <article class="story-item story-card ${visibleClass} ${streamingClass}" data-id="${escapeHtml(item.id)}">
+      <article class="story-item story-card ${visibleClass} ${streamingClass} ${historyClass}" data-id="${escapeHtml(item.id)}">
         ${item.tone ? `<p class="card-kicker">${escapeHtml(item.tone)}</p>` : ""}
         ${item.title ? `<h3 class="card-title">${escapeHtml(item.title)}</h3>` : ""}
         ${item.text ? `<p class="card-text">${escapeHtml(item.text)}</p>` : ""}
@@ -72,7 +93,7 @@ function renderTimelineItem(item) {
   }
 
   return `
-    <article class="story-item system-note ${visibleClass} ${streamingClass}" data-id="${escapeHtml(item.id)}">
+    <article class="story-item system-note ${visibleClass} ${streamingClass} ${historyClass}" data-id="${escapeHtml(item.id)}">
       <p>${escapeHtml(item.text)}</p>
     </article>
   `;
@@ -115,6 +136,14 @@ function renderComposer(state) {
     ritual: "开启完成仪式",
     settle: state.status === "self_confirmed" ? "结算奖励" : "发起新忏悔",
   };
+
+  if (state.awaitingCompletionConfirm || state.status === "completion_ritual_started") {
+    return `
+      <section class="composer-panel">
+        <p class="composer-hint">请选择上方完成仪式里的一个结果，神再继续往下判。</p>
+      </section>
+    `;
+  }
 
   const isDecisionMode = state.status === "completion_ritual_started";
   const mainLabel =
@@ -227,6 +256,55 @@ function renderError(state) {
   `;
 }
 
+function renderOracleModal(state) {
+  if (!state.oracleModalOpen || !state.oracle?.unlocked) {
+    return "";
+  }
+
+  const oracleText = state.oracle.text || "神谕暂时沉默，像是故意留了一点悬念。";
+  const settlement = state.settlement;
+
+  return `
+    <section class="oracle-overlay" data-action="close-oracle-modal" aria-modal="true" role="dialog">
+      <div class="oracle-modal" role="document" data-action="keep-open">
+        <div class="oracle-modal-topline">
+          <span class="oracle-badge">Oracle Unlocked</span>
+          <button type="button" class="oracle-close" aria-label="关闭神谕" data-action="close-oracle-modal">×</button>
+        </div>
+        <div class="oracle-portal">
+          <p class="oracle-kicker">神谕降临</p>
+          <h2>别高兴太早，宇宙只是开始对你说人话。</h2>
+          <p class="oracle-copy">${escapeHtml(oracleText)}</p>
+        </div>
+        <div class="oracle-grid">
+          <div class="oracle-stat">
+            <span>本次结算</span>
+            <strong>${escapeHtml(settlement?.reward?.exp ?? 0)} XP</strong>
+          </div>
+          <div class="oracle-stat">
+            <span>等级变化</span>
+            <strong>${escapeHtml(settlement?.before?.level ?? 0)} → ${escapeHtml(settlement?.after?.level ?? 0)}</strong>
+          </div>
+          <div class="oracle-stat">
+            <span>神明回复</span>
+            <strong>${escapeHtml(state.settlement ? "已封存" : "待确认")}</strong>
+          </div>
+        </div>
+        <div class="oracle-actions">
+          <button type="button" class="oracle-primary" data-action="close-oracle-modal">收起神谕</button>
+          <p class="oracle-footnote">点击遮罩或按 Esc 退出这段判词。</p>
+        </div>
+      </div>
+    </section>
+  `;
+}
+
+function renderTimelineFeed(timeline) {
+  return `
+    ${timeline.map((item, index) => renderTimelineItem(item, timeline.length - 1 - index)).join("")}
+  `;
+}
+
 function statusLabel(status) {
   const map = {
     idle: "待忏悔",
@@ -267,11 +345,12 @@ export function renderApp(root, state) {
           <span>${escapeHtml(state.timeline.length)} 条关键剧情</span>
         </div>
         <div class="story-feed">
-          ${state.timeline.map(renderTimelineItem).join("")}
+          ${renderTimelineFeed(state.timeline)}
         </div>
       </section>
 
       ${renderComposer(state)}
+      ${renderOracleModal(state)}
     </main>
   `;
 }

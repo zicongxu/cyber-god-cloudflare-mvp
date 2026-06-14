@@ -31,17 +31,22 @@
 
 html,
 body {
-  min-height: 100%;
+  height: 100%;
 }
 
 body {
   margin: 0;
-  min-height: 100vh;
+  height: 100%;
+  overflow: hidden;
   color: var(--text);
   background:
     radial-gradient(circle at top, rgba(255, 184, 90, 0.18), transparent 30%),
     radial-gradient(circle at 20% 20%, rgba(255, 255, 255, 0.06), transparent 24%),
     linear-gradient(180deg, #0b0d12 0%, #07080c 100%);
+}
+
+body:has(.oracle-overlay) {
+  overflow: hidden;
 }
 
 button,
@@ -55,7 +60,7 @@ button {
 }
 
 #app {
-  min-height: 100vh;
+  height: 100%;
   padding:
     max(16px, env(safe-area-inset-top))
     max(14px, env(safe-area-inset-right))
@@ -65,12 +70,12 @@ button {
 
 .app-shell {
   width: min(100%, 480px);
-  min-height: calc(100vh - max(16px, env(safe-area-inset-top)) - max(16px, env(safe-area-inset-bottom)));
+  height: calc(100dvh - max(16px, env(safe-area-inset-top)) - max(16px, env(safe-area-inset-bottom)));
   margin: 0 auto;
   display: flex;
   flex-direction: column;
-  gap: 14px;
-  padding: 16px;
+  gap: 12px;
+  padding: 14px;
   border: 1px solid var(--line);
   border-radius: 34px;
   background:
@@ -78,6 +83,7 @@ button {
     linear-gradient(180deg, rgba(13, 15, 21, 0.92), rgba(9, 10, 14, 0.98));
   box-shadow: var(--shadow);
   backdrop-filter: blur(22px);
+  overflow: hidden;
 }
 
 .topbar {
@@ -121,8 +127,8 @@ button {
 
 .profile-chip {
   display: grid;
-  gap: 10px;
-  padding: 12px 14px;
+  gap: 8px;
+  padding: 11px 12px;
   border-radius: var(--radius-lg);
   border: 1px solid var(--line);
   background: var(--bg-panel);
@@ -194,17 +200,23 @@ button {
   flex: 1 1 auto;
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 8px;
   min-height: 0;
+  overflow: hidden;
 }
 
 .story-feed {
   flex: 1 1 auto;
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 8px;
+  justify-content: flex-start;
   min-height: 0;
-  overflow: hidden;
+  overflow-y: auto;
+  overflow-x: hidden;
+  scrollbar-gutter: stable;
+  overscroll-behavior: contain;
+  padding-right: 2px;
 }
 
 .story-item {
@@ -212,7 +224,11 @@ button {
   transform: translateY(10px);
   transition:
     opacity 240ms ease,
-    transform 240ms ease;
+    transform 240ms ease,
+    max-height 240ms ease,
+    margin 240ms ease,
+    filter 240ms ease;
+  will-change: opacity, transform, max-height, filter;
 }
 
 .story-item.is-visible {
@@ -222,6 +238,37 @@ button {
 
 .story-item.is-entering {
   opacity: 0;
+}
+
+.story-item.is-age-0 {
+  opacity: 1;
+  transform: translateY(0);
+  max-height: none;
+  filter: none;
+}
+
+.story-item.is-age-1 {
+  opacity: 0.88;
+  transform: translateY(0) scale(0.995);
+  filter: saturate(0.95);
+}
+
+.story-item.is-age-2 {
+  opacity: 0.66;
+  transform: translateY(0) scale(0.988);
+  filter: saturate(0.88);
+}
+
+.story-item.is-age-3 {
+  opacity: 0.42;
+  transform: translateY(0) scale(0.978);
+  filter: saturate(0.78);
+}
+
+.story-item.is-age-4plus {
+  opacity: 0.22;
+  transform: translateY(0) scale(0.975);
+  filter: saturate(0.72);
 }
 
 .story-item.is-streaming .bubble-text::after,
@@ -247,9 +294,21 @@ button {
 .bubble {
   width: fit-content;
   max-width: 88%;
-  padding: 13px 14px;
+  padding: 11px 13px;
   border-radius: 22px;
   border: 1px solid var(--line);
+}
+
+.story-item.is-age-4plus .bubble-label,
+.story-item.is-age-4plus .bubble-title,
+.story-item.is-age-4plus .bubble-text,
+.story-item.is-age-4plus .card-kicker,
+.story-item.is-age-4plus .card-title,
+.story-item.is-age-4plus .card-text,
+.story-item.is-age-4plus .step-list,
+.story-item.is-age-4plus .card-actions,
+.story-item.is-age-4plus .system-note p {
+  opacity: 0.72;
 }
 
 .bubble-user {
@@ -292,7 +351,7 @@ button {
 .current-task,
 .settlement-card,
 .system-note {
-  padding: 14px;
+  padding: 12px 13px;
   border-radius: var(--radius-lg);
   border: 1px solid var(--line);
   background: var(--surface);
@@ -314,7 +373,7 @@ button {
 }
 
 .step-list {
-  margin: 10px 0 0;
+  margin: 8px 0 0;
   padding-left: 18px;
   color: rgba(245, 239, 227, 0.86);
 }
@@ -327,7 +386,7 @@ button {
   display: flex;
   gap: 8px;
   flex-wrap: wrap;
-  margin-top: 12px;
+  margin-top: 10px;
 }
 
 .chip-button,
@@ -367,15 +426,15 @@ button {
 
 .composer-panel {
   display: grid;
-  gap: 9px;
-  padding-top: 2px;
+  gap: 8px;
+  padding-top: 0;
 }
 
 .composer {
   display: grid;
   grid-template-columns: 1fr auto;
   gap: 10px;
-  padding: 12px;
+  padding: 10px 11px;
   border-radius: 24px;
   border: 1px solid rgba(255, 255, 255, 0.1);
   background: rgba(15, 17, 23, 0.94);
@@ -383,7 +442,7 @@ button {
 
 .composer textarea {
   width: 100%;
-  min-height: 48px;
+  min-height: 42px;
   resize: none;
   border: 0;
   outline: 0;
@@ -399,7 +458,7 @@ button {
 .submit-button {
   border: 0;
   padding: 0 16px;
-  min-width: 110px;
+  min-width: 102px;
   border-radius: 18px;
   background: linear-gradient(135deg, #f2cf84 0%, #c7953e 100%);
   color: #17130b;
@@ -444,6 +503,158 @@ button {
   line-height: 1.5;
 }
 
+.oracle-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 40;
+  display: grid;
+  place-items: center;
+  padding:
+    max(18px, env(safe-area-inset-top))
+    max(16px, env(safe-area-inset-right))
+    max(18px, env(safe-area-inset-bottom))
+    max(16px, env(safe-area-inset-left));
+  background: rgba(4, 5, 8, 0.72);
+  backdrop-filter: blur(18px);
+  animation: oracle-fade-in 180ms ease-out;
+}
+
+.oracle-modal {
+  width: min(100%, 420px);
+  border-radius: 28px;
+  border: 1px solid rgba(216, 179, 109, 0.22);
+  background:
+    radial-gradient(circle at top right, rgba(216, 179, 109, 0.2), transparent 26%),
+    linear-gradient(180deg, rgba(26, 20, 13, 0.98), rgba(12, 11, 16, 0.99));
+  box-shadow:
+    0 30px 100px rgba(0, 0, 0, 0.62),
+    inset 0 1px 0 rgba(255, 255, 255, 0.06);
+  padding: 18px;
+  display: grid;
+  gap: 16px;
+  transform: translateY(6px) scale(0.98);
+  animation: oracle-rise-in 220ms cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.oracle-modal-topline {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.oracle-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 7px 10px;
+  border-radius: 999px;
+  border: 1px solid rgba(216, 179, 109, 0.24);
+  background: rgba(216, 179, 109, 0.12);
+  color: var(--gold);
+  font-size: 11px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.oracle-close {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: rgba(255, 255, 255, 0.05);
+  color: var(--text);
+  font-size: 22px;
+  line-height: 1;
+}
+
+.oracle-portal {
+  display: grid;
+  gap: 10px;
+}
+
+.oracle-kicker {
+  margin: 0;
+  color: var(--gold);
+  font-size: 11px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+}
+
+.oracle-portal h2 {
+  margin: 0;
+  font-size: 22px;
+  line-height: 1.18;
+  letter-spacing: -0.03em;
+}
+
+.oracle-copy {
+  margin: 0;
+  color: rgba(245, 239, 227, 0.88);
+  line-height: 1.75;
+  font-size: 15px;
+}
+
+.oracle-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.oracle-stat {
+  display: grid;
+  gap: 6px;
+  padding: 12px;
+  border-radius: 18px;
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.oracle-stat span,
+.oracle-footnote {
+  color: var(--muted);
+  font-size: 11px;
+}
+
+.oracle-stat strong {
+  font-size: 14px;
+  line-height: 1.25;
+}
+
+.oracle-actions {
+  display: grid;
+  gap: 10px;
+}
+
+.oracle-primary {
+  width: 100%;
+  border: 0;
+  padding: 13px 16px;
+  border-radius: 18px;
+  background: linear-gradient(135deg, #f2cf84 0%, #c7953e 100%);
+  color: #17130b;
+  font-weight: 700;
+}
+
+.oracle-footnote {
+  margin: 0;
+  text-align: center;
+}
+
+@keyframes oracle-fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes oracle-rise-in {
+  to {
+    transform: translateY(0) scale(1);
+  }
+}
+
 @media (max-width: 420px) {
   #app {
     padding:
@@ -454,12 +665,42 @@ button {
   }
 
   .app-shell {
-    min-height: calc(100vh - max(8px, env(safe-area-inset-top)) - max(8px, env(safe-area-inset-bottom)));
+    height: calc(100dvh - max(8px, env(safe-area-inset-top)) - max(8px, env(safe-area-inset-bottom)));
     border-radius: 28px;
-    padding: 14px;
+    padding: 12px;
   }
 
   .submit-button {
     min-width: 96px;
+  }
+
+  .oracle-modal {
+    padding: 16px;
+    border-radius: 24px;
+  }
+
+  .oracle-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .profile-chip {
+    gap: 6px;
+    padding: 10px 11px;
+  }
+
+  .bubble {
+    max-width: 92%;
+  }
+
+  .story-card,
+  .current-task,
+  .settlement-card,
+  .system-note {
+    padding: 11px 12px;
+  }
+
+  .feed-shell,
+  .story-feed {
+    gap: 7px;
   }
 }

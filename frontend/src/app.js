@@ -2,7 +2,6 @@ import { createApiClient } from "./api.js";
 import { createInitialState, loadState, normalizeState, randomId, saveState } from "./state.js";
 import { renderApp } from "./render.js";
 
-const MAX_TIMELINE = 5;
 const DEFAULT_FLOW_API_BASE = "https://cyber-god-api.hi542994938.workers.dev";
 const DEFAULT_CHAT_API_BASE = "https://cyber-god-api.hi542994938.workers.dev";
 const LEGACY_LOCAL_API_BASE = "http://localhost:8787";
@@ -54,6 +53,10 @@ function createMessage(partial) {
   };
 }
 
+function keepTimeline(entries) {
+  return entries;
+}
+
 export function createApp(root) {
   const apiBases = resolveApiBases();
   const api = createApiClient(apiBases);
@@ -66,12 +69,67 @@ export function createApp(root) {
     bootstrapped: true,
     timeline: savedState.timeline,
   });
+  let feedScrollState = {
+    top: 0,
+    atBottom: true,
+  };
 
   function persist() {
     saveState(state);
   }
 
+  function captureFeedScrollState() {
+    const feed = root.querySelector(".story-feed");
+    if (!(feed instanceof HTMLElement)) {
+      return;
+    }
+
+    const maxTop = Math.max(0, feed.scrollHeight - feed.clientHeight);
+    feedScrollState = {
+      top: feed.scrollTop,
+      atBottom: feed.scrollTop >= maxTop - 8,
+    };
+  }
+
+  function restoreFeedScrollState() {
+    scrollFeedToLatest();
+  }
+
+  function scrollFeedToLatest() {
+    const latestEntryId = state.timeline.at(-1)?.id;
+
+    window.setTimeout(() => {
+      window.requestAnimationFrame(() => {
+        window.requestAnimationFrame(() => {
+          const feed = root.querySelector(".story-feed");
+          if (!(feed instanceof HTMLElement)) {
+            return;
+          }
+
+          const latestEntry = Array.from(feed.querySelectorAll(".story-item")).find(
+            (item) => item instanceof HTMLElement && item.dataset.id === latestEntryId,
+          );
+
+          if (latestEntry instanceof HTMLElement) {
+            const feedRect = feed.getBoundingClientRect();
+            const latestRect = latestEntry.getBoundingClientRect();
+            const nextTop = feed.scrollTop + latestRect.bottom - feedRect.bottom;
+            feed.scrollTop = Math.max(0, nextTop);
+          } else {
+            feed.scrollTop = Math.max(0, feed.scrollHeight - feed.clientHeight);
+          }
+
+          feedScrollState = {
+            top: feed.scrollTop,
+            atBottom: true,
+          };
+        });
+      });
+    }, 16);
+  }
+
   function setState(updater) {
+    captureFeedScrollState();
     const next = typeof updater === "function" ? updater(state) : { ...state, ...updater };
     state = normalizeState({
       ...next,
@@ -80,17 +138,46 @@ export function createApp(root) {
     });
     persist();
     render();
+    scrollFeedToLatest();
   }
 
   function patch(partial) {
     setState((current) => ({ ...current, ...partial }));
   }
 
+  function updateDraft(value) {
+    state = {
+      ...state,
+      draft: value,
+    };
+    persist();
+  }
+
+  function openOracleModal() {
+    if (!state.oracle?.unlocked) {
+      return;
+    }
+
+    patch({ oracleModalOpen: true });
+  }
+
+  function closeOracleModal() {
+    patch({ oracleModalOpen: false });
+  }
+
+  function enterCompletionConfirm() {
+    patch({ awaitingCompletionConfirm: true, error: null });
+  }
+
+  function exitCompletionConfirm() {
+    patch({ awaitingCompletionConfirm: false });
+  }
+
   function pushTimeline(entries, options = {}) {
     const incoming = entries.map((entry) => createMessage(entry));
     setState((current) => ({
       ...current,
-      timeline: [...current.timeline, ...incoming].slice(-MAX_TIMELINE),
+      timeline: keepTimeline([...current.timeline, ...incoming]),
       status: options.status ?? current.status,
       flowId: options.flowId ?? current.flowId,
       taskId: options.taskId ?? current.taskId,
@@ -100,6 +187,7 @@ export function createApp(root) {
       ritual: options.ritual ?? current.ritual,
       settlement: options.settlement ?? current.settlement,
       oracle: options.oracle ?? current.oracle,
+      oracleModalOpen: options.oracleModalOpen ?? current.oracleModalOpen,
       profile: options.profile ?? current.profile,
       ritualChoice: options.ritualChoice ?? current.ritualChoice,
       error: null,
@@ -136,7 +224,7 @@ export function createApp(root) {
     const next = createMessage(entry);
     setState((current) => ({
       ...current,
-      timeline: [...current.timeline, next].slice(-MAX_TIMELINE),
+      timeline: keepTimeline([...current.timeline, next]),
     }));
     revealTimeline([next.id]);
     return next;
@@ -198,6 +286,7 @@ export function createApp(root) {
         text: text || "……",
         meta: { streaming: false },
       });
+      scrollFeedToLatest();
       return text;
     } catch (error) {
       updateTimelineEntry(streamId, {
@@ -205,6 +294,7 @@ export function createApp(root) {
         text: error.message || "这位神今天网络不太稳。",
         meta: { streaming: false },
       });
+      scrollFeedToLatest();
       throw error;
     }
   }
@@ -299,11 +389,23 @@ export function createApp(root) {
         tone: "结算完成",
         title: flow.status === "oracle_unlocked" ? "神谕已解锁" : "奖励已结算",
         text: "闭环已完成。下次别拖到系统开始替你记账。",
+        ctas:
+          flow.status === "oracle_unlocked"
+            ? [
+                {
+                  action: "open-oracle-modal",
+                  label: "查看神谕",
+                },
+              ]
+            : [],
+        meta: {
+          oracleUnlocked: flow.status === "oracle_unlocked",
+        },
       });
     }
 
     return {
-      timeline: items.slice(-MAX_TIMELINE).map((item) => ({ ...createMessage(item), visible: true })),
+      timeline: keepTimeline(items).map((item) => ({ ...createMessage(item), visible: true })),
       profile,
       status: flow.status,
       flowId: flow.flow_id,
@@ -324,6 +426,7 @@ export function createApp(root) {
           : state.ritual,
       settlement: state.settlement,
       oracle: state.oracle,
+      oracleModalOpen: Boolean(state.oracleModalOpen && flow.status === "oracle_unlocked"),
       ritualChoice: state.ritualChoice,
       loading: false,
       error: null,
@@ -385,6 +488,8 @@ export function createApp(root) {
         ritual: null,
         settlement: null,
         oracle: null,
+        oracleModalOpen: false,
+        awaitingCompletionConfirm: false,
         ritualChoice: "completed",
         loading: true,
         error: null,
@@ -409,10 +514,11 @@ export function createApp(root) {
       });
       setState((current) => ({
         ...current,
-        timeline: [...current.timeline, taskCard].slice(-MAX_TIMELINE),
+        timeline: keepTimeline([...current.timeline, taskCard]),
         loading: false,
       }));
       revealTimeline([taskCard.id]);
+      scrollFeedToLatest();
 
       api
         .getProfile()
@@ -469,10 +575,11 @@ export function createApp(root) {
         ritual,
         loading: false,
         error: null,
-        timeline: [...current.timeline, item].slice(-MAX_TIMELINE),
+        timeline: keepTimeline([...current.timeline, item]),
         lastSyncedAt: new Date().toISOString(),
       }));
       revealTimeline([item.id]);
+      scrollFeedToLatest();
     } catch (error) {
       patch({
         loading: false,
@@ -513,16 +620,19 @@ export function createApp(root) {
           taskId: response.task?.task_id || current.taskId,
           task: response.task || null,
           profile,
-          timeline: [...current.timeline, godItem, taskItem].slice(-MAX_TIMELINE),
+          timeline: keepTimeline([...current.timeline, godItem, taskItem]),
           loading: false,
           error: null,
           ritual: null,
           settlement: null,
           oracle: null,
+          oracleModalOpen: false,
+          awaitingCompletionConfirm: false,
           ritualChoice: "completed",
           lastSyncedAt: new Date().toISOString(),
         }));
         revealTimeline([godItem.id, taskItem.id]);
+        scrollFeedToLatest();
       } catch (error) {
         patch({
           loading: false,
@@ -561,6 +671,17 @@ export function createApp(root) {
         title: settlement.oracle?.unlocked ? "神谕已解锁" : "奖励已结算",
         text: settlement.oracle?.text || "闭环已完成。",
         detail: [],
+        ctas: settlement.oracle?.unlocked
+          ? [
+              {
+                action: "open-oracle-modal",
+                label: "打开神谕",
+              },
+            ]
+          : [],
+        meta: {
+          oracleUnlocked: Boolean(settlement.oracle?.unlocked),
+        },
       });
 
       const nextState = {
@@ -569,16 +690,19 @@ export function createApp(root) {
         profile,
         settlement: settlement.settlement || null,
         oracle: settlement.oracle || null,
+        oracleModalOpen: Boolean(settlement.oracle?.unlocked),
+        awaitingCompletionConfirm: false,
         ritual: null,
         loading: false,
         error: null,
         ritualChoice: "completed",
-        timeline: [...state.timeline, godItem, settlementItem].slice(-MAX_TIMELINE),
+        timeline: keepTimeline([...state.timeline, godItem, settlementItem]),
         lastSyncedAt: new Date().toISOString(),
       };
 
       setState(nextState);
       revealTimeline([godItem.id, settlementItem.id]);
+      scrollFeedToLatest();
     } catch (error) {
       patch({
         loading: false,
@@ -611,6 +735,11 @@ export function createApp(root) {
       return;
     }
 
+    if (state.status === "self_confirmed") {
+      enterCompletionConfirm();
+      return;
+    }
+
     if (state.status === "completion_ritual_started") {
       await handleCompletionChoice(state.ritualChoice);
       return;
@@ -625,19 +754,31 @@ export function createApp(root) {
       return;
     }
 
-    const action = target.dataset.action;
+    const actionTarget = target.closest("[data-action]");
+    const action = actionTarget instanceof HTMLElement ? actionTarget.dataset.action : undefined;
     if (!action) {
       return;
     }
 
     if (action === "choose-completion") {
-      const value = target.dataset.value === "not_completed" ? "not_completed" : "completed";
+      const value = actionTarget.dataset.value === "not_completed" ? "not_completed" : "completed";
+      if (state.awaitingCompletionConfirm || state.status === "completion_ritual_started") {
+        await handleCompletionChoice(value);
+        return;
+      }
+
       patch({ ritualChoice: value, error: null });
       return;
     }
 
-    if (action === "submit-composer") {
-      event.preventDefault();
+    if (action === "open-oracle-modal") {
+      openOracleModal();
+      return;
+    }
+
+    if (action === "close-oracle-modal") {
+      closeOracleModal();
+      return;
     }
   });
 
@@ -651,16 +792,39 @@ export function createApp(root) {
       return;
     }
 
-    patch({ draft: target.value });
+    updateDraft(target.value);
   });
 
+  root.addEventListener(
+    "scroll",
+    (event) => {
+      const target = event.target;
+      if (!(target instanceof HTMLElement) || !target.classList.contains("story-feed")) {
+        return;
+      }
+
+      const maxTop = Math.max(0, target.scrollHeight - target.clientHeight);
+      feedScrollState = {
+        top: target.scrollTop,
+        atBottom: target.scrollTop >= maxTop - 8,
+      };
+    },
+    true,
+  );
+
   window.addEventListener("keydown", (event) => {
+    if (event.key === "Escape" && state.oracleModalOpen) {
+      closeOracleModal();
+      return;
+    }
+
     if (event.key === "Escape" && state.error) {
       patch({ error: null });
     }
   });
 
   bootstrap();
+  restoreFeedScrollState();
 
   return {
     getState() {

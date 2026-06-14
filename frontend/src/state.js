@@ -13,6 +13,8 @@ export function createInitialState() {
     ritual: null,
     settlement: null,
     oracle: null,
+    oracleModalOpen: false,
+    awaitingCompletionConfirm: false,
     ritualChoice: "completed",
     draft: "",
     timeline: [],
@@ -49,8 +51,7 @@ function normalizeTimeline(timeline) {
       meta: item.meta && typeof item.meta === "object" ? item.meta : null,
       visible: true,
       timestamp: typeof item.timestamp === "string" ? item.timestamp : new Date().toISOString(),
-    }))
-    .slice(-5);
+    }));
 }
 
 export function normalizeState(input) {
@@ -70,6 +71,8 @@ export function normalizeState(input) {
     ritual: state.ritual && typeof state.ritual === "object" ? state.ritual : null,
     settlement: state.settlement && typeof state.settlement === "object" ? state.settlement : null,
     oracle: state.oracle && typeof state.oracle === "object" ? state.oracle : null,
+    oracleModalOpen: Boolean(state.oracleModalOpen),
+    awaitingCompletionConfirm: Boolean(state.awaitingCompletionConfirm),
     ritualChoice: state.ritualChoice === "not_completed" ? "not_completed" : "completed",
     draft: typeof state.draft === "string" ? state.draft : "",
     timeline: normalizeTimeline(state.timeline),
@@ -123,4 +126,3 @@ export function randomId(prefix) {
 
   return `${prefix}_${Math.random().toString(16).slice(2, 10)}`;
 }
-
