@@ -32,3 +32,5 @@ TypeScript
 ```
 
 协议文档见 [docs/api-protocol.md](docs/api-protocol.md)。
+
+部署说明见 [docs/deploy.md](docs/deploy.md)。
